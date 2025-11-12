@@ -1,6 +1,5 @@
 import React from "react";
 import { NevBar } from "../Heder_Nev/NevBar";
-//import { FeatchingDetails } from "../../API_Data/FeatchingDetails";
 import {Footer} from "../Footer/Footer";
 import { FoodCategory } from "../FoodCategory/FoodCategory";
 import { Breakfast } from "../BreakFast/Breakfast";
@@ -16,7 +15,7 @@ export default function Home() {
        <Breakfast/>
        <Lunch/>
        <Snacks/>
-        {/* <FeatchingDetails/>  */}
+        
       
       <Footer/>
     </div>
