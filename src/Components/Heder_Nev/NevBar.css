@@ -1,0 +1,32 @@
+/* Transparent Navbar with shadow */
+.navbar-custom {
+  background-color: rgba(255, 255, 255, 0.1); /* transparent white tint */
+  backdrop-filter: blur(10px); /* glass effect */
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  color: white;
+}
+
+/* Menu items */
+.navbar-item {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+/* Hover effect on items */
+.navbar-item:hover {
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.4);
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Optional: white text for dark backgrounds */
+.navbar-custom input::placeholder {
+  color: #ccc;
+}
+
+.navbar-custom input {
+  color: white;
+}

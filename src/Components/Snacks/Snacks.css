@@ -1,0 +1,99 @@
+.top-restaurants {
+  margin: 25px;
+  position: relative;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.header h4 {
+  font-weight: 600;
+}
+
+.nav-btns button {
+  border: none;
+  background: #f2f2f2;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 6px 10px;
+  margin-left: 5px;
+  transition: background 0.3s;
+}
+
+.nav-btns button:hover {
+  background: #ddd;
+}
+
+.restaurant-list {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding-bottom: 10px;
+}
+
+.restaurant-list::-webkit-scrollbar {
+  display: none;
+}
+
+.restaurant-card {
+  flex: 0 0 auto;
+  width: 230px;
+  background: #fff;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s;
+}
+
+.restaurant-card:hover {
+  transform: translateY(-5px);
+}
+
+.image-container {
+  position: relative;
+}
+
+.image-container img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+}
+
+.offer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 5px 10px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.restaurant-info {
+  padding: 10px;
+}
+
+.restaurant-info h5 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.rating {
+  color: #16a34a;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.category, .location {
+  color: #555;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
