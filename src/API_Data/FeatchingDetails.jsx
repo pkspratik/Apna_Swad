@@ -5,7 +5,7 @@ import "aos/dist/aos.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
-import { Link } from "react-router-dom";
+// Link import removed because it was not used (commented-out Link usage in JSX)
 
 export function FeatchingDetails(){
   const [product, setProduct] = useState([

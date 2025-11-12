@@ -1,5 +1,4 @@
 import React from "react";
-// import { Link } from "react-router-dom";
 import './NevBar.css';
 export function NevBar(prop) {
   return (

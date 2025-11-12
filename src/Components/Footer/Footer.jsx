@@ -1,6 +1,5 @@
 import React from "react";
-// import {BodyBg} from '../BodyTheams/BodyBg';
- import { Link } from "react-router-dom";
+ 
 
 export function Footer() {
   return (
@@ -44,9 +43,9 @@ export function Footer() {
               Get started with Fully Tech!
             </button>
             <div>
-              <a href="#" className="small text-muted text-decoration-underline">
-                or see our Items
-              </a>
+              <a href="/" className="small text-muted text-decoration-underline">
+               or see our Items
+               </a>
             </div>
           </div>
         </div>
@@ -67,11 +66,11 @@ export function Footer() {
                 {section.items.map((item, j) => (
                   <li key={j}>
                     <a
-                      href="#"
-                      className="text-secondary text-decoration-none d-block mb-1"
-                    >
+                        href="/"
+                       className="text-secondary text-decoration-none d-block mb-1"
+                  >
                       {item}
-                    </a>
+                     </a>
                   </li>
                 ))}
               </ul>
