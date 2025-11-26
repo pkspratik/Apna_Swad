@@ -1,113 +1,5 @@
-// import { createContext, useContext, useState, useEffect } from "react";
-// import { auth, db } from "../../firebase";
-// import {
-//   onAuthStateChanged,
-//   signInWithEmailAndPassword,
-//   signOut,
-// } from "firebase/auth";
-// import { doc, getDoc, setDoc } from "firebase/firestore";
-
-// const AuthContext = createContext();
-
-// // 👑 Admin Email
-// import { ADMIN_EMAIL } from "../../adminConfig";
-// // const ADMIN_EMAIL = "apnaswad99@gmail.com";
-
-
-// export const AuthProvider = ({ children }) => {
-//   const [user, setUser] = useState(null);
-//   const [role, setRole] = useState(null); // admin | customer
-//   const [loading, setLoading] = useState(true);
-
-//   // 🔥 Auto detect login / logout on ANY device
-//   useEffect(() => {
-//     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-//       if (firebaseUser) {
-//         const userRef = doc(db, "users", firebaseUser.uid);
-//         const snap = await getDoc(userRef);
-
-//         let userRole = "customer";
-
-//         // first time login
-//         if (snap.exists()) {
-//           userRole = snap.data().role;
-//         } else {
-//           // detect admin by email
-//           if (firebaseUser.email === ADMIN_EMAIL) userRole = "admin";
-
-//           await setDoc(
-//             userRef,
-//             {
-//               email: firebaseUser.email,
-//               role: userRole,
-//             },
-//             { merge: true }
-//           );
-//         }
-
-//         setUser(firebaseUser);
-//         setRole(userRole);
-//       } else {
-//         setUser(null);
-//         setRole(null);
-//       }
-
-//       setLoading(false);
-//     });
-
-//     return () => unsubscribe();
-//   }, []);
-
-//   // 🔐 Email & Password Login
-//   const login = async (email, password) => {
-//     const res = await signInWithEmailAndPassword(auth, email, password);
-//     const currentUser = res.user;
-
-//     let userRole = currentUser.email === ADMIN_EMAIL ? "admin" : "customer";
-
-//     await setDoc(
-//       doc(db, "users", currentUser.uid),
-//       {
-//         email: currentUser.email,
-//         role: userRole,
-//       },
-//       { merge: true }
-//     );
-
-//     setUser(currentUser);
-//     setRole(userRole);
-//     return userRole;
-//   };
-
-//   // 🔴 Logout handler
-//   const logout = async () => {
-//     await signOut(auth);
-//     setUser(null);
-//     setRole(null);
-//   };
-
-//   return (
-//     <AuthContext.Provider
-//       value={{
-//         user,
-//         role,
-//         loading,
-//         login,
-//         logout,
-//         setUser,  // 🌟 newly added
-//         setRole,  // 🌟 newly added
-//       }}
-//     >
-//       {!loading && children}
-//     </AuthContext.Provider>
-//   );
-// };
-
-// export const useAuth = () => useContext(AuthContext);
-
-
 // -------------------------
-// All Imports (must be at top)
+// All Imports at Top
 // -------------------------
 import { createContext, useContext, useState, useEffect } from "react";
 import { auth, db } from "../../firebase";
@@ -119,46 +11,47 @@ import {
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ADMIN_EMAIL, ADMIN_PASSWORD } from "../../adminConfig";
 
-// -------------------------
 const AuthContext = createContext();
-// -------------------------
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔥 Auto detect login/logout
+  // Auto detect login/logout
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userRef = doc(db, "users", firebaseUser.uid);
-        const snap = await getDoc(userRef);
+      try {
+        console.log("🔥 Firebase Auth State:", firebaseUser);
 
-        let userRole = "customer";
+        if (firebaseUser) {
+          const userRef = doc(db, "users", firebaseUser.uid);
+          const snap = await getDoc(userRef);
 
-        if (snap.exists()) {
-          userRole = snap.data().role;
-        } else {
-          if (firebaseUser.email === ADMIN_EMAIL) {
-            userRole = "admin";
+          let userRole = "customer";
+
+          if (snap.exists()) {
+            userRole = snap.data().role;
+            console.log("📌 User role from Firestore:", userRole);
+          } else {
+            if (firebaseUser.email === ADMIN_EMAIL) userRole = "admin";
+
+            await setDoc(
+              userRef,
+              { email: firebaseUser.email, role: userRole },
+              { merge: true }
+            );
           }
 
-          await setDoc(
-            userRef,
-            {
-              email: firebaseUser.email,
-              role: userRole,
-            },
-            { merge: true }
-          );
+          setUser(firebaseUser);
+          setRole(userRole);
+        } else {
+          console.log("⚠ No user logged in");
+          setUser(null);
+          setRole(null);
         }
-
-        setUser(firebaseUser);
-        setRole(userRole);
-      } else {
-        setUser(null);
-        setRole(null);
+      } catch (error) {
+        console.error("🔥 Auth State Error:", error);
       }
 
       setLoading(false);
@@ -167,49 +60,64 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // 🔐 Login for Admin + Customer
+  // ===================================
+  // 🔐 LOGIN FUNCTION (with full logs)
+  // ===================================
   const login = async (email, password) => {
-    // ⭐ Admin Login (Local check, no Firebase needed)
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    try {
+      console.log("🟦 Login Attempt ------------------------");
+      console.log("Typed Email:", email);
+      console.log("Typed Password:", password);
+      console.log("Admin Email from Config:", ADMIN_EMAIL);
+      console.log("Admin Password from Config:", ADMIN_PASSWORD);
+
+      // ===================================
+      // ⭐ FIXED ADMIN LOGIN CHECK
+      // ===================================
+      // ===================================
+      // ⭐ FIXED ADMIN LOGIN CHECK
+      // ===================================
+      // if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      //   console.log("🎉 ADMIN LOGIN SUCCESS (Bypassed Firebase)");
+      //   // ... bypass removed to ensure Firestore access ...
+      // }
+
+      console.log("🟠 Attempting Firebase Customer Login...");
+
+      // ===================================
+      // 🔐 CUSTOMER LOGIN (Firebase Auth)
+      // ===================================
+      const res = await signInWithEmailAndPassword(auth, email, password);
+      const currentUser = res.user;
+
+      console.log("🟢 FIREBASE LOGIN SUCCESS:", currentUser.email);
+
+      let userRole =
+        currentUser.email === ADMIN_EMAIL ? "admin" : "customer";
+
       await setDoc(
-        doc(db, "users", "ADMIN"),
+        doc(db, "users", currentUser.uid),
         {
-          email: ADMIN_EMAIL,
-          role: "admin",
+          email: currentUser.email,
+          role: userRole,
         },
         { merge: true }
       );
 
-      setUser({ email: ADMIN_EMAIL });
-      setRole("admin");
+      setUser(currentUser);
+      setRole(userRole);
 
-      return "admin";
+      return userRole;
+    } catch (error) {
+      console.error("❌ Login Error:", error);
+      throw error; // Return error to Login.jsx
     }
-
-    // ⭐ Customer Login (Firebase)
-    const res = await signInWithEmailAndPassword(auth, email, password);
-    const currentUser = res.user;
-
-    let userRole = currentUser.email === ADMIN_EMAIL ? "admin" : "customer";
-
-    await setDoc(
-      doc(db, "users", currentUser.uid),
-      {
-        email: currentUser.email,
-        role: userRole,
-      },
-      { merge: true }
-    );
-
-    setUser(currentUser);
-    setRole(userRole);
-
-    return userRole;
   };
 
-  // 🔴 Logout
+  // Logout
   const logout = async () => {
     await signOut(auth);
+    console.log("🚪 User Logged Out");
     setUser(null);
     setRole(null);
   };
