@@ -10,7 +10,8 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 const AuthContext = createContext();
 
 // 👑 Admin Email
-const ADMIN_EMAIL = "apnaswad99@gmail.com";
+import { ADMIN_EMAIL } from "../../adminConfig";
+// const ADMIN_EMAIL = "apnaswad99@gmail.com";
 
 
 export const AuthProvider = ({ children }) => {

@@ -1,24 +1,40 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { Link } from "react-router-dom";
+import { resetPassword } from "../../firebase";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const backendURL = "http://localhost:4000"; // change if needed
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   const handleReset = async (e) => {
     e.preventDefault();
-    if (!email) return alert("Enter admin email");
+    if (!email) {
+      setError("Please enter your email address");
+      return;
+    }
 
     setLoading(true);
+    setError("");
+    setMessage("");
+
     try {
-      await axios.post(`${backendURL}/auth/admin-forgot`, { email });
-      alert("Temporary password sent to your admin email!");
+      await resetPassword(email);
+      setMessage("Password reset email sent! Check your inbox.");
+      setEmail("");
     } catch (err) {
-      alert("Invalid email. Admin not found.");
+      console.error("Password reset error:", err);
+      if (err.code === "auth/user-not-found") {
+        setError("No account found with this email address");
+      } else if (err.code === "auth/invalid-email") {
+        setError("Invalid email address");
+      } else {
+        setError("Failed to send reset email. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -27,12 +43,15 @@ export default function ForgotPassword() {
         className="card p-4 shadow-lg"
         style={{ maxWidth: "400px", margin: "auto" }}
       >
-        <h3 className="text-center mb-3">Admin Forgot Password</h3>
+        <h3 className="text-center mb-3">Forgot Password</h3>
+
+        {message && <p style={{ color: "green", marginBottom: 10 }}>{message}</p>}
+        {error && <p style={{ color: "red", marginBottom: 10 }}>{error}</p>}
 
         <form onSubmit={handleReset}>
           <input
             type="email"
-            placeholder="Enter admin email"
+            placeholder="Enter your email address"
             className="form-control mb-3"
             value={email}
             onChange={(e) => setEmail(e.target.value)}

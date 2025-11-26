@@ -1,14 +1,16 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import { NevBar } from "../Heder_Nev/NevBar";
 import { Footer } from "../Footer/Footer";
 import { useAuth } from "../../context/AuthContext/AuthContext";
+import { createAccount } from "../../firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../../firebase";
 
 export default function Signup() {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { setUser, setRole } = useAuth();
 
   const mobile = state?.mobile || ""; // optional now
   const initialRole = state?.role === "seller" ? "seller" : "buyer";
@@ -17,31 +19,57 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [address, setAddress] = useState(""); // optional
-  const [role, setRole] = useState(initialRole);
+  const [role, setRoleState] = useState(initialRole);
   const [shopName, setShopName] = useState("");
-
-  const backendURL = "http://localhost:4000";
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSignup = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      const res = await axios.post(`${backendURL}/auth/signup`, {
-        mobile: mobile ? "+91" + mobile : "", // optional
-        name,
+      // Create user with Firebase Auth
+      const userCredential = await createAccount(email, password);
+      const user = userCredential.user;
+
+      // Store additional user data in Firestore
+      const userData = {
         email,
-        password,
-        address: address || "", // optional
-        role,
-        shopName: role === "seller" ? shopName : undefined,
-      });
+        name,
+        mobile: mobile ? "+91" + mobile : "",
+        address: address || "",
+        role: role,
+        createdAt: new Date().toISOString(),
+      };
 
-      login(res.data.user, res.data.token);
+      if (role === "seller") {
+        userData.shopName = shopName;
+      }
 
+      await setDoc(doc(db, "users", user.uid), userData);
+
+      // Update auth context
+      setUser(user);
+      setRole(role);
+
+      // Navigate based on role
       if (role === "buyer") navigate("/");
-      if (role === "seller") navigate("/seller-dashboard");
+      if (role === "seller") navigate("/seller");
     } catch (err) {
-      alert("Signup failed ❌");
+      console.error("Signup error:", err);
+      if (err.code === "auth/email-already-in-use") {
+        setError("Email already in use");
+      } else if (err.code === "auth/weak-password") {
+        setError("Password should be at least 6 characters");
+      } else if (err.code === "auth/invalid-email") {
+        setError("Invalid email address");
+      } else {
+        setError("Signup failed. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -56,6 +84,8 @@ export default function Signup() {
           {mobile && (
             <p className="text-center text-muted">Mobile: +91 {mobile}</p>
           )}
+
+          {error && <p style={{ color: "red", marginBottom: 10 }}>{error}</p>}
 
           <form onSubmit={handleSignup}>
             <input
@@ -96,7 +126,7 @@ export default function Signup() {
             <select
               className="form-select mb-3"
               value={role}
-              onChange={(e) => setRole(e.target.value)}
+              onChange={(e) => setRoleState(e.target.value)}
               required
             >
               <option value="buyer">Customer</option>
@@ -114,7 +144,9 @@ export default function Signup() {
               />
             )}
 
-            <button className="btn btn-success w-100">Create Account</button>
+            <button className="btn btn-success w-100" disabled={loading}>
+              {loading ? "Creating Account..." : "Create Account"}
+            </button>
           </form>
 
           <div className="text-center mt-2">
