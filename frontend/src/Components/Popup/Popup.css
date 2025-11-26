@@ -1,0 +1,199 @@
+/* 🔥 OVERLAY */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 🌟 POPUP CARD */
+.popup-card {
+  width: 90%;
+  max-width: 430px;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 22px;
+
+  padding: 22px;
+  text-align: center;
+
+  backdrop-filter: blur(15px);
+  box-shadow: 0 8px 40px rgba(255, 0, 85, 0.35);
+
+  border: 1px solid rgba(255, 255, 255, 0.4);
+
+  animation: slideUp 0.35s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ❌ CLOSE BUTTON */
+.close-btn {
+  position: absolute;
+  margin-left: 355px;
+  margin-top: -10px;
+  font-size: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+
+  backdrop-filter: blur(6px);
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* TITLE */
+.popup-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #fff;
+}
+
+/* IMAGE */
+.popup-img {
+  width: 140px;
+  height: 120px;
+  border-radius: 16px;
+  object-fit: cover;
+  margin-bottom: 12px;
+
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+/* DESCRIPTION */
+.popup-desc {
+  font-size: 15px;
+  color: #fefefe;
+  opacity: 0.9;
+  margin-bottom: 18px;
+}
+
+/* OPTIONS */
+.options-section {
+  text-align: left;
+  margin-bottom: 18px;
+  color: #fff;
+}
+
+.options-section h4 {
+  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Checkbox Row */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+
+  padding: 10px;
+  border-radius: 12px;
+
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.checkbox-row:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.checkbox-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: #ff0055;
+  cursor: pointer;
+}
+
+.checkbox-row span {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* QUANTITY BOX */
+.qty-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  margin: 15px 0;
+}
+
+.qty-btn {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  border: none;
+  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  cursor: pointer;
+
+  transition: 0.25s;
+  backdrop-filter: blur(6px);
+}
+
+.qty-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.qty-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* ADD CART BUTTON (neon) */
+.add-cart-btn {
+  width: 100%;
+  padding: 14px 0;
+  margin-top: 10px;
+
+  font-size: 17px;
+  font-weight: 700;
+
+  color: white;
+  background: #ff0055;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+
+  box-shadow:
+    0 0 14px rgba(255, 0, 85, 0.9),
+    0 0 24px rgba(255, 0, 85, 0.5),
+    inset 0 0 8px rgba(255, 255, 255, 0.3);
+
+  transition: 0.25s ease;
+}
+
+.add-cart-btn:hover {
+  transform: scale(1.08);
+  background: #ff1b6e;
+
+  box-shadow:
+    0 0 20px rgba(255, 0, 120, 0.95),
+    0 0 40px rgba(255, 0, 120, 0.65);
+}

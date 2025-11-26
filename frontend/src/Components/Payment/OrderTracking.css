@@ -1,0 +1,140 @@
+.tracking-container {
+  max-width: 650px;
+  margin: auto;
+  margin-top: 25px;
+  padding: 20px;
+  font-family: "Poppins", sans-serif;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+}
+
+.tracking-title {
+  text-align: center;
+  margin-bottom: 5px;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.tracking-order-id,
+.tracking-payment,
+.tracking-total,
+.tracking-address {
+  font-size: 15px;
+  margin: 4px 0;
+}
+
+.steps-wrapper {
+  margin-top: 25px;
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+
+.steps-wrapper::before {
+  content: "";
+  position: absolute;
+  top: 40%;
+  left: 0;
+  height: 5px;
+  width: 100%;
+  background: #e1e1e1;
+  z-index: 0;
+  border-radius: 4px;
+}
+
+.step {
+  text-align: center;
+  width: 20%;
+  position: relative;
+  z-index: 2;
+}
+
+.step-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  margin: auto;
+  background: #b5b5b5;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+.step-active .step-circle {
+  background: #00b341;
+  transform: scale(1.1);
+  box-shadow: 0 0 8px rgba(0, 179, 65, 0.6);
+}
+
+.step-label {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status-text {
+  text-align: center;
+  margin-top: 25px;
+  font-size: 17px;
+}
+
+.auto-refresh-note {
+  text-align: center;
+  font-size: 13px;
+  margin-top: 8px;
+  color: #616161;
+}
+.blink {
+  animation: blink-status 0.7s ease-in-out 2;
+}
+
+@keyframes blink-status {
+  0% { background: rgba(255, 252, 177, 0.5); }
+  50% { background: rgba(255, 229, 92, 0.9); }
+  100% { background: transparent; }
+}
+.delivery-boy-box {
+  padding: 12px;
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  border-radius: 10px;
+  margin: 12px 0;
+}
+.delivery-btns {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+}
+.call-btn, .whatsapp-btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  text-decoration: none;
+}
+.call-btn {
+  background: #007bff;
+}
+.whatsapp-btn {
+  background: #16a34a;
+}
+.reorder-btn {
+  background: #ff6600;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  margin-top: 15px;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: bold;
+  width: 100%;
+}
+.reorder-btn:hover {
+  background: #e65500;
+}

@@ -1,0 +1,72 @@
+.order-success-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #f7fdf8;
+  padding: 20px;
+}
+
+.order-card {
+  background: #ffffff;
+  padding: 35px 45px;
+  border-radius: 18px;
+  text-align: center;
+  max-width: 550px;
+  width: 100%;
+  box-shadow: 0 0 22px rgba(0, 0, 0, 0.12);
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+.success-icon {
+  font-size: 65px;
+  color: #16c60c;
+  margin-bottom: 10px;
+}
+
+.success-title {
+  color: #0e8c04;
+  margin-bottom: 18px;
+  font-size: 26px;
+  font-weight: bold;
+}
+
+.order-details {
+  text-align: left;
+  background: #fafafa;
+  padding: 18px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  font-size: 16px;
+  line-height: 26px;
+}
+
+.order-details b {
+  color: #333;
+}
+
+.time-text {
+  margin-top: 10px;
+  color: #666;
+  font-style: italic;
+}
+
+.track-btn {
+  background: #ff4747;
+  color: white;
+  border: none;
+  padding: 13px 35px;
+  border-radius: 25px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.track-btn:hover {
+  background: #d93636;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

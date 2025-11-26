@@ -1,0 +1,103 @@
+.category-container {
+  position: relative;
+  padding: 30px 25px;        /* Increased padding for premium look */
+  background-color: #fff;
+  border-radius: 12px;
+}
+
+/* Title */
+.category-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 22px;
+  color: #111;
+}
+
+/* Scroll buttons */
+.scroll-buttons {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 14px;
+}
+
+.scroll-btn {
+  border: none;
+  background-color: #f1f1f1;
+  font-size: 1.4rem;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  transition: all 0.3s ease;
+}
+
+.scroll-btn:hover {
+  background-color: #e2e2e2;
+  transform: scale(1.12);
+}
+
+/* Horizontal scroll list */
+.category-list {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-behavior: smooth;
+
+  gap: 45px;    /* 👈 MORE SPACE BETWEEN ITEMS */
+  padding: 10px 5px 20px 5px; /* extra bottom padding */
+}
+
+.category-list::-webkit-scrollbar {
+  display: none;
+}
+
+/* Category item */
+.category-item {
+  flex: 0 0 auto;
+  text-align: center;
+  transition: transform 0.3s ease;
+  padding: 10px;   /* 👈 Soft padding around each item */
+  border-radius: 12px;
+}
+
+.category-item:hover {
+  transform: translateY(-6px); /* more lift */
+}
+
+/* Image box */
+.category-img-wrapper {
+  width: 110px;   /* larger circle */
+  height: 110px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+/* Hover zoom + glow */
+.category-img-wrapper:hover {
+  transform: scale(1.12);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+}
+
+.category-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.category-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #444;
+  transition: color 0.3s ease;
+}
+
+.category-item:hover .category-name {
+  color: #000;
+}

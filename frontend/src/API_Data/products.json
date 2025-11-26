@@ -1,0 +1,156 @@
+{
+  "categories": [
+    {
+      "title": "Breakfast — What's Your Choice?",
+      "category": "Breakfast",
+      "products": [
+        {
+          "id": 101,
+          "name": "Puri Sabzi",
+          "img": "https://png.pngtree.com/png-vector/20250416/ourmid/pngtree-delicious-indian-chole-bhature-platter-spicy-chickpea-curry-puri-bread-png-image_16032378.png",
+          "rating": 3.8,
+          "time": "30-40 mins",
+          "price": "₹99",
+          "offerText": "ITEMS AT ₹99",
+          "cuisines": ["Breakfast", "Puri Sabzi", "Chole Bhature"],
+          "location": "Samkuriya Bazar"
+        },
+        {
+          "id": 102,
+          "name": "Chole Bhature",
+          "img": "https://static.vecteezy.com/system/resources/previews/057/733/355/non_2x/chole-bhature-isolated-on-transparent-background-png.png",
+          "rating": 4.1,
+          "time": "30-35 mins",
+          "price": "₹125",
+          "offerText": "₹125 OFF ABOVE ₹249",
+          "cuisines": ["Breakfast", "Puri Sabzi", "Chole Bhature"],
+          "location": "Samkuriya Bazar"
+        },
+        {
+          "id": 103,
+          "name": "Masala Dosa",
+          "img": "https://i.pinimg.com/736x/e9/61/c8/e961c86ba7e92618c20a6dca4e235758.jpg",
+          "rating": 3.8,
+          "time": "30-40 mins",
+          "price": "₹99",
+          "offerText": "ITEMS AT ₹99",
+          "cuisines": ["Breakfast", "Puri Sabzi", "Chole Bhature"],
+          "location": "Samkuriya Bazar"
+        },
+        {
+          "id": 104,
+          "name": "Litti Chokha",
+          "img": "https://w7.pngwing.com/pngs/977/183/png-transparent-litti-chokha.png",
+          "rating": 3.8,
+          "time": "30-40 mins",
+          "price": "₹99",
+          "offerText": "ITEMS AT ₹99",
+          "cuisines": ["Breakfast", "Puri Sabzi", "Chole Bhature"],
+          "location": "Samkuriya Bazar"
+        }
+      ]
+    },
+
+    {
+      "title": "Lunch & Dinner — Please choose",
+      "category": "Lunch",
+      "products": [
+        {
+          "id": 201,
+          "name": "Pure Veg",
+          "img": "https://png.pngtree.com/png-clipart/20250116/original/pngtree-deluxe-indian-cuisine-thali-with-curries-png-image_20237450.png",
+          "rating": 4.2,
+          "time": "35-40 mins",
+          "price": "₹119",
+          "offerText": "ITEMS AT ₹119",
+          "cuisines": ["Lunch", "Pure Veg", "Non-Veg", "Biryani"],
+          "location": "Samkuriya Bazar"
+        },
+        {
+          "id": 202,
+          "name": "Veg-Biryani",
+          "img": "https://png.pngtree.com/png-clipart/20250105/original/pngtree-vegetable-biryani-on-plate-png-image_19293237.png",
+          "rating": 4.2,
+          "time": "35-40 mins",
+          "price": "₹119",
+          "offerText": "ITEMS AT ₹119",
+          "cuisines": ["Lunch", "Pure Veg", "Non-Veg", "Biryani"],
+          "location": "Samkuriya Bazar"
+        },
+        {
+          "id": 203,
+          "name": "Non-Veg",
+          "img": "https://p7.hiclipart.com/preview/746/20/950/vegetarian-cuisine-indian-cuisine-malai-asian-cuisine-kofta-non-veg-food.jpg",
+          "rating": 4,
+          "time": "30-35 mins",
+          "price": "₹119",
+          "offerText": "ITEMS AT ₹119",
+          "cuisines": ["Lunch", "Pure Veg", "Non-Veg", "Biryani"],
+          "location": "Samkuriya Bazar"
+        },
+        {
+          "id": 204,
+          "name": "Biryani",
+          "img": "https://i.pinimg.com/736x/ce/99/19/ce9919d8c596f8d0d68c14ac5bb3693d.jpg",
+          "rating": 4.3,
+          "time": "25-35 mins",
+          "price": "₹119",
+          "offerText": "ITEMS AT ₹119",
+          "cuisines": ["Lunch", "Pure Veg", "Non-Veg", "Biryani"],
+          "location": "Samkuriya Bazar"
+        }
+      ]
+    },
+
+    {
+      "title": "Snacks — Please choose",
+      "category": "Snacks",
+      "products": [
+        {
+          "id": 301,
+          "name": "Cold /Hot Drink",
+          "img": "https://png.pngtree.com/png-vector/20241213/ourlarge/pngtree-snacks-png-image_14743131.png",
+          "rating": 4,
+          "time": "25-35 mins",
+          "price": "₹49",
+          "offerText": "50% OFF",
+          "cuisines": ["Snacks", "Cold/Hot Drink", "Pizza", "Burger"],
+          "location": "Samkuriya Bazar"
+        },
+        {
+          "id": 302,
+          "name": "Pizza",
+          "img": "https://www.freeiconspng.com/uploads/pizza-png-1.png",
+          "rating": 4,
+          "time": "25-35 mins",
+          "price": "₹49",
+          "offerText": "50% OFF",
+          "cuisines": ["Snacks", "Cold/Hot Drink", "Pizza", "Burger"],
+          "location": "Samkuriya Bazar"
+        },
+        {
+          "id": 303,
+          "name": "Burger",
+          "img": "https://png.pngtree.com/png-vector/20250121/ourlarge/pngtree-burger-isolated-transparent-background-png-image_15296529.png",
+          "rating": 4,
+          "time": "25-35 mins",
+          "price": "₹49",
+          "offerText": "50% OFF",
+          "cuisines": ["Snacks", "Cold/Hot Drink", "Pizza", "Burger"],
+          "location": "Samkuriya Bazar"
+        },
+        {
+          "id": 304,
+          "name": "Pani Puri",
+          "img": "https://png.pngtree.com/png-vector/20250126/ourmid/pngtree-indian-street-food-pani-puri-golgappa-round-hd-image-png-image_15337745.png",
+          "rating": 4,
+          "time": "25-35 mins",
+          "price": "₹49",
+          "offerText": "50% OFF",
+          "cuisines": ["Snacks", "Cold/Hot Drink", "Pizza", "Burger"],
+          "location": "Samkuriya Bazar"
+        }
+      ]
+    }
+  ]
+}

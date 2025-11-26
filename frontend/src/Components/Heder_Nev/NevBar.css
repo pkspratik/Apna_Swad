@@ -1,0 +1,66 @@
+/* Transparent Navbar with shadow */
+.navbar-custom {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+
+  color: #cfcfcf; /* Light Gray text */
+}
+
+/* Menu items wrapper */
+.navbar-menu {
+  display: flex;
+  gap: 18px;
+}
+
+/* Menu items */
+.navbar-item {
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #cfcfcf; /* Light Gray */
+}
+
+/* Underline animation */
+.navbar-item::after {
+  content: "";
+  position: absolute;
+  width: 0%;
+  height: 2px;
+  background: #e0e0e0; /* Light gray underline */
+  bottom: 0;
+  left: 0;
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+.navbar-item:hover::after {
+  width: 100%; /* underline expands */
+}
+
+/* Hover glow effect */
+.navbar-item:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+/* Search placeholder */
+.navbar-custom input::placeholder {
+  color: #bfbfbf;
+}
+
+/* Search text color */
+.navbar-custom input {
+  color: #e0e0e0;
+}
