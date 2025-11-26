@@ -1,13 +1,1 @@
-{
-  "name": "apna-swad-backend-vercel",
-  "version": "1.0.0",
-  "type": "commonjs",
-  "scripts": {
-    "start": "vercel dev"
-  },
-  "dependencies": {
-    "firebase-admin": "^11.10.1",
-    "bcrypt": "^5.1.0",
-    "jsonwebtoken": "^9.0.0"
-  }
-}
+{ "name": "backend", "version": "1.0.0" }
