@@ -1,6 +1,7 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 
+// MAIN SCREENS
 import Home from "../Home/Home";
 import { ProductDetails } from "../ProductDetails/ProductDetails";
 import CategoryList from "../ProductDetails/ProductCategoryList/CategoryList";
@@ -15,27 +16,31 @@ import { Snacks } from "../Snacks/Snacks";
 import { FoodWithCart } from "../Lunch/FoodWithCart/FoodWithCart";
 import { Cart } from "../Cart/Cart";
 
-// GLOBAL CART PROVIDER
+// PROVIDERS
 import { CartProvider } from "../../context/CartContext";
 
-// Login + Role Based Pages
+// AUTH SCREENS
 import Login from "../Login/Login";
-import SellerPage from "../Seller/SellerPage";
-import BuyerPage from "../Buyer/BuyerPage";
 import Signup from "../Login/Signup";
 import ForgotPassword from "../Login/ForgotPassword";
 
+// ADMIN
+import { AdminDashboard } from "../Admin/AdminDashboard";
+import { AdminOrders } from "../AdminOrders/AdminOrders";
+
+// ROLE ROUTE
 import { RoleRoute } from "../../routes/RoleRoute";
+
+// BUYER / SELLER (not used, but kept)
+import SellerPage from "../Seller/SellerPage";
+import BuyerPage from "../Buyer/BuyerPage";
+
+// OTHERS
 import { Summary } from "../Summary/Summary";
 import { Payment } from "../Payment/Payment";
 import { UPIPayment } from "../Payment/UPIPayment";
 import { OrderSuccess } from "../Payment/OrderSuccess";
 import { OrderTracking } from "../Payment/OrderTracking";
-
-// ADMIN PAGES
-import { AdminDashboard } from "../Admin/AdminDashboard";
-import { AdminOrders } from "../AdminOrders/AdminOrders";
-
 import { ContactUs } from "../ContactUs/ContactUs";
 
 export default function App() {
@@ -43,13 +48,22 @@ export default function App() {
     <CartProvider>
       <Routes>
 
-        {/* 🔓 PUBLIC LOGIN PAGE (customer) */}
+        {/* ===========================
+           🔓 PUBLIC LOGIN ROUTES
+        ============================ */}
+
+        {/* Customer Login */}
         <Route path="/login" element={<Login />} />
 
-        {/* 🔐 ADMIN LOGIN PAGE */}
+        {/* Admin Login */}
         <Route path="/admin-auth" element={<Login />} />
 
-        {/* 🔒 ADMIN DASHBOARD */}
+
+        {/* ===========================
+           🔐 PROTECTED ADMIN ROUTES
+        ============================ */}
+
+        {/* Admin Dashboard */}
         <Route
           path="/admin/dashboard"
           element={
@@ -59,7 +73,7 @@ export default function App() {
           }
         />
 
-        {/* 🔒 ADMIN ORDERS PANEL */}
+        {/* Admin Orders Page */}
         <Route
           path="/admin/orders"
           element={
@@ -69,7 +83,10 @@ export default function App() {
           }
         />
 
-        {/* OPTIONAL ADMIN HOME */}
+
+        {/* ===========================
+           OPTIONAL ADMIN HOME ROUTE
+        ============================ */}
         <Route
           path="/admin/home"
           element={
@@ -79,7 +96,11 @@ export default function App() {
           }
         />
 
-        {/* 🔒 BUYER */}
+
+        {/* ===========================
+           🔒 PROTECTED BUYER / SELLER
+        ============================ */}
+
         <Route
           path="/buyer"
           element={
@@ -89,7 +110,6 @@ export default function App() {
           }
         />
 
-        {/* 🔒 SELLER */}
         <Route
           path="/seller"
           element={
@@ -99,7 +119,11 @@ export default function App() {
           }
         />
 
-        {/* ===== OTHER USER ROUTES ===== */}
+
+        {/* ===========================
+           🌐 PUBLIC ROUTES
+        ============================ */}
+
         <Route path="/" element={<Home />} />
         <Route path="/product" element={<FoodWithCart />} />
         <Route path="/product/:id" element={<ItemDetails />} />
@@ -114,7 +138,8 @@ export default function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/contactUs" element={<ContactUs />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot" element={<ForgotPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
         <Route path="/summary" element={<Summary />} />
         <Route path="/payment" element={<Payment />} />
         <Route path="/upi-payment" element={<UPIPayment />} />

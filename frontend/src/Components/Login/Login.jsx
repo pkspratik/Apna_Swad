@@ -15,17 +15,17 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 🚫 Do not redirect automatically on /admin-auth screen
+  // 🚫 Prevent auto redirect on /admin-auth until admin logs in
   useEffect(() => {
-    if (!user) return; // no user logged in → show login page
+    if (!user) return;
 
-    // if on admin login page BUT user is customer → block dashboard redirect
+    // If user is customer but on admin-auth → do nothing
     if (isAdminLoginPage && role !== "admin") return;
 
-    // normal redirect rules
+    // Normal redirect
     if (role === "admin") navigate("/admin/dashboard", { replace: true });
     else navigate("/", { replace: true });
-  }, [user, role, navigate, isAdminLoginPage]);
+  }, [user, role, isAdminLoginPage, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -35,18 +35,20 @@ export default function Login() {
     try {
       const userRole = await login(email.trim(), password.trim());
 
-      // ⛔ Customer trying to login on admin-auth page
+      // ❌ Customer trying to login on admin page
       if (isAdminLoginPage && userRole !== "admin") {
-        setError("❌ You are not authorized for admin panel");
+        setError("❌ You are not authorized for the admin dashboard");
         setLoading(false);
         return;
       }
 
+      // Redirect based on role
       if (userRole === "admin") navigate("/admin/dashboard", { replace: true });
       else navigate("/", { replace: true });
 
     } catch (err) {
       console.error("Login Error:", err);
+
       if (err.code === "auth/user-not-found") setError("User not found");
       else if (err.code === "auth/wrong-password") setError("Wrong password");
       else if (err.code === "auth/invalid-email") setError("Invalid email format");
@@ -66,7 +68,7 @@ export default function Login() {
         <p className="login-subtitle">
           {isAdminLoginPage
             ? "Login to access restaurant admin dashboard"
-            : "Login to continue your food order"}
+            : "Login to continue ordering food"}
         </p>
 
         {error && <p style={{ color: "red", marginBottom: 10 }}>{error}</p>}
@@ -74,7 +76,7 @@ export default function Login() {
         <input
           type="email"
           className="input-field"
-          placeholder={isAdminLoginPage ? "Enter Admin Email Address" : "Enter Email Address"}
+          placeholder={isAdminLoginPage ? "Enter Admin Email" : "Enter Email"}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
@@ -95,7 +97,7 @@ export default function Login() {
           {loading ? "Logging in..." : "🔐 Login"}
         </button>
 
-        {/* Hide signup & forgot password on admin page */}
+        {/* Hide signup/forgot links on admin page */}
         {!isAdminLoginPage && (
           <div className="extra-links">
             <a href="/signup">Create New Account</a>
