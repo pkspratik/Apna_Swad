@@ -2,10 +2,11 @@
 // import { Link } from "react-router-dom";
 // import "./NevBar.css";
 // import { useCart } from "../../context/CartContext";
+// import { useAuth } from "../../context/AuthContext/AuthContext";
 
 // export function NevBar(prop) {
-
 //   const { cart } = useCart(); // global cart
+//   const { user, role, logout } = useAuth();
 
 //   return (
 //     <div>
@@ -38,26 +39,95 @@
 //             ))}
 //         </div>
 
-//         {/* Login + Cart */}
+//         {/* Login / Dashboard / Cart */}
 //         <div className="d-flex align-items-center gap-3">
 
-//           {/* ✅ Modern Rounded Login Icon */}
-//           <Link
-//             to="/login"
-//             className="d-flex align-items-center justify-content-center rounded-circle"
-//             style={{
-//               width: "38px",
-//               height: "38px",
-//               backgroundColor: "#f1f1f1",
-//               boxShadow: "0 0 10px rgba(0,0,0,0.2)",
-//               cursor: "pointer",
-//               textDecoration: "none",
-//               color: "#000",
-//               fontSize: "20px"
-//             }}
-//           >
-//             <i className="bi bi-person"></i>
-//           </Link>
+//           {/* =============================
+//               🔐 ADMIN DASHBOARD BUTTON
+//               Show only when admin logged in
+//           ============================== */}
+//           {role === "admin" && (
+//             <Link
+//               to="/admin/dashboard"
+//               className="d-flex align-items-center justify-content-center rounded px-3 py-1 fw-bold"
+//               style={{
+//                 backgroundColor: "#00b386",
+//                 color: "#fff",
+//                 textDecoration: "none",
+//                 boxShadow: "0 0 8px rgba(0, 179, 134, 0.8)",
+//               }}
+//             >
+//               Admin Panel
+//             </Link>
+//           )}
+
+//           {/* =============================
+//               🔐 LOGIN BUTTON
+//               Hide when ANY user logged in
+//           ============================== */}
+//           {!user && (
+//             <Link
+//               to="/login"
+//               className="d-flex align-items-center justify-content-center rounded-circle"
+//               style={{
+//                 width: "38px",
+//                 height: "38px",
+//                 backgroundColor: "#f1f1f1",
+//                 boxShadow: "0 0 10px rgba(0,0,0,0.2)",
+//                 cursor: "pointer",
+//                 textDecoration: "none",
+//                 color: "#000",
+//                 fontSize: "20px"
+//               }}
+//             >
+//               <i className="bi bi-person"></i>
+//             </Link>
+//           )}
+
+//           {/* =============================
+//               🔐 PROFILE ICON
+//               Show only when user logged in (non-admin)
+//           ============================== */}
+//           {user && role !== "admin" && (
+//             <Link
+//               to="/profile"
+//               className="d-flex align-items-center justify-content-center rounded-circle"
+//               style={{
+//                 width: "38px",
+//                 height: "38px",
+//                 backgroundColor: "#667eea",
+//                 boxShadow: "0 0 10px rgba(102, 126, 234, 0.5)",
+//                 cursor: "pointer",
+//                 textDecoration: "none",
+//                 color: "#fff",
+//                 fontSize: "20px"
+//               }}
+//               title="My Profile & Orders"
+//             >
+//               <i className="bi bi-person-circle"></i>
+//             </Link>
+//           )}
+
+//           {/* =============================
+//               🔐 LOGOUT BUTTON (Optional)
+//               Show only when user logged in
+//           ============================== */}
+//           {user && (
+//             <button
+//               onClick={logout}
+//               className="btn btn-sm fw-bold"
+//               style={{
+//                 backgroundColor: "#f43f5e",
+//                 color: "white",
+//                 borderRadius: "5px",
+//                 padding: "6px 12px",
+//                 border: "none",
+//                 boxShadow: "0 0 10px rgba(244, 63, 94, 0.6)",
+//               }}
+//             >
+//               Logout
+//             </button>
+//           )}
 
 //           {/* Cart Icon */}
 //           <Link
@@ -86,14 +156,13 @@
 // }
 
 
-
 import { Link } from "react-router-dom";
 import "./NevBar.css";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext/AuthContext";
 
 export function NevBar(prop) {
-  const { cart } = useCart(); // global cart
+  const { cart } = useCart();
   const { user, role, logout } = useAuth();
 
   return (
@@ -127,31 +196,45 @@ export function NevBar(prop) {
             ))}
         </div>
 
-        {/* Login / Dashboard / Cart */}
         <div className="d-flex align-items-center gap-3">
 
           {/* =============================
-              🔐 ADMIN DASHBOARD BUTTON
-              Show only when admin logged in
+              ADMIN DASHBOARD + LOGOUT
           ============================== */}
           {role === "admin" && (
-            <Link
-              to="/admin/dashboard"
-              className="d-flex align-items-center justify-content-center rounded px-3 py-1 fw-bold"
-              style={{
-                backgroundColor: "#00b386",
-                color: "#fff",
-                textDecoration: "none",
-                boxShadow: "0 0 8px rgba(0, 179, 134, 0.8)",
-              }}
-            >
-              Admin Panel
-            </Link>
+            <>
+              <Link
+                to="/admin/dashboard"
+                className="d-flex align-items-center justify-content-center rounded px-3 py-1 fw-bold"
+                style={{
+                  backgroundColor: "#00b386",
+                  color: "#fff",
+                  textDecoration: "none",
+                  boxShadow: "0 0 8px rgba(0, 179, 134, 0.8)",
+                }}
+              >
+                Admin Panel
+              </Link>
+
+              <button
+                onClick={logout}
+                className="btn btn-sm fw-bold"
+                style={{
+                  backgroundColor: "#f43f5e",
+                  color: "white",
+                  borderRadius: "5px",
+                  padding: "6px 12px",
+                  border: "none",
+                  boxShadow: "0 0 10px rgba(244, 63, 94, 0.6)",
+                }}
+              >
+                Logout
+              </button>
+            </>
           )}
 
           {/* =============================
-              🔐 LOGIN BUTTON
-              Hide when ANY user logged in
+              LOGIN ICON (when NOT logged in)
           ============================== */}
           {!user && (
             <Link
@@ -165,7 +248,7 @@ export function NevBar(prop) {
                 cursor: "pointer",
                 textDecoration: "none",
                 color: "#000",
-                fontSize: "20px"
+                fontSize: "20px",
               }}
             >
               <i className="bi bi-person"></i>
@@ -173,8 +256,8 @@ export function NevBar(prop) {
           )}
 
           {/* =============================
-              🔐 PROFILE ICON
-              Show only when user logged in (non-admin)
+              PROFILE ICON (ONLY customer)
+              ⚡ NO Logout Button Here
           ============================== */}
           {user && role !== "admin" && (
             <Link
@@ -188,33 +271,12 @@ export function NevBar(prop) {
                 cursor: "pointer",
                 textDecoration: "none",
                 color: "#fff",
-                fontSize: "20px"
+                fontSize: "20px",
               }}
               title="My Profile & Orders"
             >
               <i className="bi bi-person-circle"></i>
             </Link>
-          )}
-
-          {/* =============================
-              🔐 LOGOUT BUTTON (Optional)
-              Show only when user logged in
-          ============================== */}
-          {user && (
-            <button
-              onClick={logout}
-              className="btn btn-sm fw-bold"
-              style={{
-                backgroundColor: "#f43f5e",
-                color: "white",
-                borderRadius: "5px",
-                padding: "6px 12px",
-                border: "none",
-                boxShadow: "0 0 10px rgba(244, 63, 94, 0.6)",
-              }}
-            >
-              Logout
-            </button>
           )}
 
           {/* Cart Icon */}
@@ -225,7 +287,6 @@ export function NevBar(prop) {
           >
             🛒
 
-            {/* Cart Count Badge */}
             {cart.length > 0 && (
               <span
                 className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
@@ -237,7 +298,6 @@ export function NevBar(prop) {
           </Link>
 
         </div>
-
       </nav>
     </div>
   );
