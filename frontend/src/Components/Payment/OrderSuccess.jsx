@@ -10,33 +10,35 @@ export function OrderSuccess() {
 
   const [orderData, setOrderData] = useState(null);
 
-  // Data passed from Payment.jsx (recommended path)
+  // Data passed from Payment.jsx
   const navState = location.state;
 
-  // Load order if page refreshed or opened later
+  // Load order from Firestore when page refreshes
   useEffect(() => {
     const loadOrder = async () => {
-      // If Payment.jsx passed all details → use it
-      if (navState?.docId) {
+
+      // ⭐ If Payment.jsx passed data → use instantly
+      if (navState?.orderId) {
         setOrderData(navState);
         return;
       }
 
-      // Fallback (page refresh)
-      const savedDocId = localStorage.getItem("apnaSwad_last_order_doc");
+      // ⭐ Fallback (if refreshed)
+      const fallbackOrderId = localStorage.getItem("apnaSwad_last_order");
+      if (!fallbackOrderId) return;
 
-      if (!savedDocId) return;
-
-      const snap = await getDoc(doc(db, "orders", savedDocId));
+      const ref = doc(db, "orders", String(fallbackOrderId));
+      const snap = await getDoc(ref);
 
       if (snap.exists()) {
-        setOrderData({ docId: savedDocId, ...snap.data() });
+        setOrderData({ orderId: fallbackOrderId, ...snap.data() });
       }
     };
 
     loadOrder();
   }, [navState]);
 
+  // ❌ Still loading or missing data
   if (!orderData) {
     return (
       <h2 style={{ textAlign: "center", marginTop: 50 }}>
@@ -57,10 +59,20 @@ export function OrderSuccess() {
     );
   }
 
-  const { orderId, total, address, paymentMethod, docId } = orderData;
+  // ⭐ Extract fields
+  const {
+    orderId,
+    totalPrice,
+    total,
+    address,
+    paymentMethod
+  } = orderData;
 
+  const finalTotal = totalPrice || total;
+
+  // ⭐ Tracking uses SAME orderId (same as Firestore doc ID)
   const goToTracking = () => {
-    navigate(`/order-tracking/${docId}`); // ⭐ FIXED (use Firebase document ID)
+    navigate(`/order-tracking/${orderId}`);
   };
 
   return (
@@ -72,7 +84,7 @@ export function OrderSuccess() {
 
         <div className="order-details">
           <p><b>Order ID:</b> {orderId}</p>
-          <p><b>Total Paid:</b> ₹{total}</p>
+          <p><b>Total Paid:</b> ₹{finalTotal}</p>
           <p><b>Payment Mode:</b> {paymentMethod?.toUpperCase()}</p>
           <p><b>Delivery Address:</b> {address}</p>
           <p className="time-text">⏳ Estimated delivery in 35 – 45 minutes</p>

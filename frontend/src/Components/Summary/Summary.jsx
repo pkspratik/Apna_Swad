@@ -9,11 +9,11 @@ import { Footer } from "../Footer/Footer.jsx";
 
 export function Summary() {
   const { cart } = useCart();
-  const { user, setUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [checking, setChecking] = useState(false);
-  const [deliveryAvailable, setDeliveryAvailable] = useState(null);
+  const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [userDistance, setUserDistance] = useState(null);
   const [userAddress, setUserAddress] = useState("");
 
@@ -21,7 +21,7 @@ export function Summary() {
   const restaurantLng = 84.835471;
 
   // ---------------------------------------------------------
-  // 🔍 Distance Calculation Helpers
+  // 🔢 Distance Functions
   // ---------------------------------------------------------
   const toRad = (value) => (value * Math.PI) / 180;
 
@@ -29,21 +29,21 @@ export function Summary() {
     const R = 6371;
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
+
     const a =
       Math.sin(dLat / 2) ** 2 +
       Math.cos(toRad(lat1)) *
       Math.cos(toRad(lat2)) *
       Math.sin(dLon / 2) ** 2;
+
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  const formatDistance = (distance) => {
-    if (distance * 1000 < 1000) return `${(distance * 1000).toFixed(0)} meters`;
-    return `${distance.toFixed(2)} KM`;
-  };
+  const formatDistance = (d) =>
+    d * 1000 < 1000 ? `${(d * 1000).toFixed(0)} meters` : `${d.toFixed(2)} KM`;
 
   // ---------------------------------------------------------
-  // 📍 GET USER LOCATION (GPS + Reverse API)
+  // 📍 GET USER LOCATION
   // ---------------------------------------------------------
   const handleGetLocation = () => {
     if (!user) {
@@ -55,31 +55,31 @@ export function Summary() {
     setChecking(true);
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
 
-        const distance = getDistance(lat, lng, restaurantLat, restaurantLng);
-        setUserDistance(distance);
+        const dist = getDistance(lat, lng, restaurantLat, restaurantLng);
+        setUserDistance(dist);
 
         setDeliveryAvailable(true);
 
-        // Update user temp data in context
-        setUser({ ...user, lat, lng });
-
         // Reverse Geocoding
-        fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
-        )
-          .then((res) => res.json())
-          .then((data) => {
-            if (data?.display_name) setUserAddress(data.display_name);
-          });
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+          );
+
+          const data = await res.json();
+          if (data?.display_name) setUserAddress(data.display_name);
+        } catch (e) {
+          alert("Unable to fetch address");
+        }
 
         setChecking(false);
       },
       () => {
-        alert("Turn on GPS to detect your location");
+        alert("Please enable GPS location");
         setChecking(false);
       },
       { enableHighAccuracy: true }
@@ -87,38 +87,38 @@ export function Summary() {
   };
 
   // ---------------------------------------------------------
-  // 💰 PRICE CALCULATIONS
+  // 💰 PRICE CALCULATION
   // ---------------------------------------------------------
-  const totalAmount = cart.reduce(
+  const subtotal = cart.reduce(
     (sum, item) => sum + Number(item.price.replace("₹", "")) * item.qty,
     0
   );
 
-  const deliveryCharge = totalAmount >= 499 ? 0 : 40;
-  const grandTotal = totalAmount + deliveryCharge;
+  const deliveryCharge = subtotal >= 499 ? 0 : 40;
+  const grandTotal = subtotal + deliveryCharge;
 
   // ---------------------------------------------------------
-  // ⭐ PAYMENT → NO ORDER ID GENERATION HERE (VERY IMPORTANT)
+  // ⭐ PROCEED TO PAYMENT
   // ---------------------------------------------------------
   const handlePayment = () => {
     if (!user) {
-      alert("Please login first");
+      alert("Login required to continue");
       navigate("/login?redirect=summary");
       return;
     }
 
     if (!userAddress) {
-      alert("Click location button to fetch your address");
+      alert("Please detect your GPS location first");
       return;
     }
 
-    // Save delivery info for Payment.jsx
+    // Save delivery details
     localStorage.setItem(
       "apnaSwad_delivery_info",
       JSON.stringify({
         fullAddress: userAddress,
         phone: user?.phone || "",
-        coords: { lat: user?.lat, lng: user?.lng },
+        coords: { lat: user?.lat || null, lng: user?.lng || null },
         distance: userDistance,
       })
     );
@@ -133,27 +133,29 @@ export function Summary() {
       {/* Address Section */}
       <div className="address-section">
         <h3>Delivery Location</h3>
+
         <button
           className="change-address-btn"
-          onClick={handleGetLocation}
           disabled={checking}
+          onClick={handleGetLocation}
         >
           {checking ? "Detecting GPS..." : "Click here for Your Location"}
         </button>
 
         {deliveryAvailable && (
           <p style={{ color: "green", marginTop: 10 }}>
-            ✔ Delivery available<br />
-            📍 Distance: {formatDistance(userDistance)}<br /><br />
-            📌 <b>Your address:</b><br />
+            ✔ Delivery available <br />
+            📍 Distance: {formatDistance(userDistance)} <br /> <br />
+            📌 <b>Your address:</b> <br />
             {userAddress}
           </p>
         )}
       </div>
 
-      {/* Cart Items Section */}
+      {/* Items Section */}
       <div className="items-section">
         <h3>Order Summary</h3>
+
         {cart.map((item, index) => (
           <div className="summary-item" key={index}>
             <img src={item.img} alt="" />
@@ -173,7 +175,7 @@ export function Summary() {
 
         <div className="price-row">
           <p>Subtotal</p>
-          <p>₹{totalAmount}</p>
+          <p>₹{subtotal}</p>
         </div>
 
         <div className="price-row">

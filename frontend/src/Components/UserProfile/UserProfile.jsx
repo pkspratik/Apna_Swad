@@ -25,28 +25,26 @@ export function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("profile");
 
-  // ⭐ Fetch user profile safely
+  // ⭐ Fetch user profile
   useEffect(() => {
     if (!user) {
       navigate("/login");
       return;
     }
 
-    const fetchProfile = async () => {
+    const loadProfile = async () => {
       try {
         const snap = await getDoc(doc(db, "users", user.uid));
-        if (snap.exists()) {
-          setUserProfile(snap.data());
-        }
+        if (snap.exists()) setUserProfile(snap.data());
       } catch (err) {
-        console.error("User profile error:", err);
+        console.error("Profile load error:", err);
       }
     };
 
-    fetchProfile();
+    loadProfile();
   }, [user]);
 
-  // ⭐ Fetch Orders (FULLY FIXED for Safari)
+  // ⭐ Fetch orders (bug-free, mobile safe)
   useEffect(() => {
     if (!user) return;
 
@@ -60,7 +58,6 @@ export function UserProfile() {
           ...d.data(),
         }));
 
-        // Sort latest first (fallback safe)
         list.sort((a, b) => {
           const A = a.createdAt?.seconds || 0;
           const B = b.createdAt?.seconds || 0;
@@ -84,6 +81,7 @@ export function UserProfile() {
     navigate("/login");
   };
 
+  // ⭐ Status color
   const getStatusColor = (s) => {
     switch (s) {
       case "Delivered":
@@ -101,9 +99,10 @@ export function UserProfile() {
     }
   };
 
+  // ⭐ Reorder
   const reorder = (items) => {
     clearCart();
-    items.forEach((item) => addToCart(item));
+    items.forEach((i) => addToCart(i));
     navigate("/cart");
   };
 
@@ -114,13 +113,14 @@ export function UserProfile() {
       <NevBar BrandTitle="Apna Swad" MenuItems={["Home", "Category"]} />
 
       <div className="user-profile-container">
+        {/* Header */}
         <div className="profile-header">
           <div className="profile-avatar">
             {userProfile?.name?.charAt(0).toUpperCase() || "U"}
           </div>
 
           <div className="profile-info">
-            <h2>{userProfile?.name}</h2>
+            <h2>{userProfile?.name || "User"}</h2>
             <p>{userProfile?.email || user.email}</p>
           </div>
 
@@ -129,7 +129,7 @@ export function UserProfile() {
           </button>
         </div>
 
-        {/* ===================== TABS ======================== */}
+        {/* Tabs */}
         <div className="profile-tabs">
           <button
             className={`tab-btn ${activeTab === "profile" ? "active" : ""}`}
@@ -146,7 +146,7 @@ export function UserProfile() {
           </button>
         </div>
 
-        {/* ===================== PROFILE TAB ======================== */}
+        {/* Profile Tab */}
         {activeTab === "profile" && (
           <div className="profile-details-section">
             <div className="detail-card">
@@ -182,7 +182,7 @@ export function UserProfile() {
           </div>
         )}
 
-        {/* ===================== ORDERS TAB ======================== */}
+        {/* Orders Tab */}
         {activeTab === "orders" && (
           <div className="order-history-section">
             <h3>Your Order History</h3>
@@ -200,6 +200,7 @@ export function UserProfile() {
               <div className="orders-list">
                 {orders.map((order) => (
                   <div key={order.id} className="order-card">
+                    {/* Header */}
                     <div className="order-header">
                       <div>
                         <p className="order-id">Order #{order.orderId}</p>
@@ -219,6 +220,7 @@ export function UserProfile() {
                       </div>
                     </div>
 
+                    {/* Items */}
                     <div className="order-items">
                       <strong>Items:</strong>
                       <ul>
@@ -230,11 +232,10 @@ export function UserProfile() {
                       </ul>
                     </div>
 
+                    {/* Footer */}
                     <div className="order-footer">
-                      <div className="order-total">
-                        <span>Total:</span>
-                        <span className="total-amount">₹{order.total}</span>
-                      </div>
+                      <span>Total: </span>
+                      <span className="total-amount">₹{order.total}</span>
 
                       <span
                         className="payment-badge"
@@ -249,14 +250,16 @@ export function UserProfile() {
                       </span>
                     </div>
 
+                    {/* Address */}
                     <div className="order-address">
                       <strong>Address:</strong> {order.address || "—"}
                     </div>
 
+                    {/* Buttons */}
                     <div className="order-actions">
                       <button
                         className="track-order-btn"
-                        onClick={() => navigate(`/order-tracking/${order.id}`)} // ⭐ fixed
+                        onClick={() => navigate(`/order-tracking/${order.id}`)} // ⭐ Correct
                       >
                         🔍 Track Order
                       </button>

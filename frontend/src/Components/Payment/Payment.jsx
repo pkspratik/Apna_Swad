@@ -17,7 +17,7 @@ export function Payment() {
   const UPI_ID = "pratikk512@ybl";
   const UPI_NAME = "Pratik Singh";
 
-  // Force login
+  // Redirect if not logged in
   useEffect(() => {
     if (!user) {
       alert("Please login to continue");
@@ -25,6 +25,7 @@ export function Payment() {
     }
   }, [user, navigate]);
 
+  // Load saved address from summary page
   useEffect(() => {
     const info = localStorage.getItem("apnaSwad_delivery_info");
     if (info) setDeliveryInfo(JSON.parse(info));
@@ -34,6 +35,7 @@ export function Payment() {
     (sum, item) => sum + Number(item.price.replace("₹", "")) * item.qty,
     0
   );
+
   const deliveryCharge = subtotal >= 499 ? 0 : 40;
   const totalPrice = subtotal + deliveryCharge;
 
@@ -48,13 +50,15 @@ export function Payment() {
   const getCartBackup = () =>
     cart.length > 0 ? cart : JSON.parse(localStorage.getItem("cartItems") || "[]");
 
-  // ⭐ SAVE ORDER USING orderId AS FIRESTORE DOC ID
+  // -------------------------------
+  // ⭐ SAVE ORDER — SAME orderId IS DOC ID
+  // -------------------------------
   const saveOrderToFirebase = async (orderId, mode, addressText) => {
     const cartBackup = getCartBackup();
     const currentUser = auth.currentUser;
 
     if (!currentUser) throw new Error("User not logged in!");
-    if (cartBackup.length === 0) throw new Error("Cart empty!");
+    if (!cartBackup || cartBackup.length === 0) throw new Error("Cart empty!");
 
     const orderRef = doc(db, "orders", String(orderId));
 
@@ -76,28 +80,42 @@ export function Payment() {
     return orderDetails;
   };
 
-  // COD
+  // --------------------------------
+  // ⭐ COD ORDER
+  // --------------------------------
   const handleCODOrder = async () => {
-    if (!deliveryInfo?.fullAddress) return alert("Please get your location");
+    if (!deliveryInfo?.fullAddress) return alert("Please detect your location first");
 
     const addressText = `${deliveryInfo.fullAddress} — Phone: ${deliveryInfo.phone}`;
 
     try {
-      const orderId = Date.now(); // ⭐ visible + used as doc ID
+      const orderId = Date.now();
 
       const saved = await saveOrderToFirebase(orderId, "cod", addressText);
 
+      // Save fallback id
       localStorage.setItem("apnaSwad_last_order", orderId);
 
-      navigate("/order-success", { state: saved });
+      // SEND CORRECT DATA TO ORDER SUCCESS
+      navigate("/order-success", {
+        state: {
+          docId: String(orderId),
+          orderId: Number(orderId),
+          totalPrice: totalPrice,
+          address: addressText,
+          paymentMethod: "cod",
+        },
+      });
     } catch (err) {
       alert("COD Failed: " + err.message);
     }
   };
 
-  // UPI
+  // --------------------------------
+  // ⭐ UPI ORDER
+  // --------------------------------
   const handleUPIPaid = async () => {
-    if (!deliveryInfo?.fullAddress) return alert("Please get your location");
+    if (!deliveryInfo?.fullAddress) return alert("Please detect your location first");
 
     const addressText = `${deliveryInfo.fullAddress} — Phone: ${deliveryInfo.phone}`;
 
@@ -108,7 +126,16 @@ export function Payment() {
 
       localStorage.setItem("apnaSwad_last_order", orderId);
 
-      navigate("/order-success", { state: saved });
+      // SEND CORRECT DATA TO ORDER SUCCESS
+      navigate("/order-success", {
+        state: {
+          docId: String(orderId),
+          orderId: Number(orderId),
+          totalPrice: totalPrice,
+          address: addressText,
+          paymentMethod: "upi",
+        },
+      });
     } catch (err) {
       alert("UPI Failed: " + err.message);
     }
@@ -123,7 +150,7 @@ export function Payment() {
     <div className="payment-container">
       <h2>Choose Payment Method</h2>
 
-      {/* COD */}
+      {/* COD Option */}
       <div
         className={`payment-option ${paymentMethod === "cod" ? "selected" : ""}`}
         onClick={() => setPaymentMethod("cod")}
@@ -132,7 +159,7 @@ export function Payment() {
         <label>💵 Cash on Delivery (COD)</label>
       </div>
 
-      {/* UPI */}
+      {/* UPI Option */}
       <div
         className={`payment-option ${paymentMethod === "upi" ? "selected" : ""}`}
         onClick={() => setPaymentMethod("upi")}
@@ -144,6 +171,7 @@ export function Payment() {
       {paymentMethod === "upi" && (
         <div className="upi-box">
           <h3>Scan & Pay</h3>
+
           <img
             className="upi-qr"
             src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
@@ -151,10 +179,8 @@ export function Payment() {
             )}`}
             alt="UPI QR"
           />
-          <button
-            className="upi-pay-btn"
-            onClick={() => (window.location.href = upiLink)}
-          >
+
+          <button className="upi-pay-btn" onClick={() => (window.location.href = upiLink)}>
             Open UPI App
           </button>
 

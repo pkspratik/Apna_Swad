@@ -18,7 +18,7 @@ export function AdminOrders() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // 🔥 Load USERS first (Safari important!)
+  // ⭐ LOAD USERS FIRST
   const loadUsers = async () => {
     const snap = await getDocs(collection(db, "users"));
     let map = {};
@@ -27,10 +27,9 @@ export function AdminOrders() {
     return map;
   };
 
-  // 🔥 Real-time Orders Listener
+  // ⭐ REAL-TIME ORDERS LISTENER
   const loadOrders = (userMap) => {
     return onSnapshot(collection(db, "orders"), (snapshot) => {
-
       const list = snapshot.docs.map((d) => {
         const order = d.data();
         const userInfo = userMap[order.userId] || {};
@@ -44,24 +43,32 @@ export function AdminOrders() {
         };
       });
 
-      // Sort newest first
-      list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      // ⭐ FIX SORTING CRASH
+      list.sort((a, b) => {
+        const t1 = a.createdAt?.seconds || 0;
+        const t2 = b.createdAt?.seconds || 0;
+        return t2 - t1;
+      });
 
       setOrders(list);
       setLoading(false);
     });
   };
 
-  // 🔥 Main Loader
+  // ⭐ MAIN LOADER
   useEffect(() => {
     let unsubscribe = null;
 
-    const init = async () => {
+    const initAll = async () => {
       const userMap = await loadUsers();
-      unsubscribe = loadOrders(userMap);
+
+      // Safari FIX — load second call after micro-delay
+      setTimeout(() => {
+        unsubscribe = loadOrders(userMap);
+      }, 10);
     };
 
-    init();
+    initAll();
 
     return () => {
       if (unsubscribe) unsubscribe();
@@ -72,7 +79,7 @@ export function AdminOrders() {
     return <h3 style={{ textAlign: "center", marginTop: 40 }}>Loading Orders...</h3>;
   }
 
-  // 🔍 Search filter
+  // ⭐ SEARCH
   const filteredOrders = orders.filter((o) => {
     const k = search.toLowerCase();
     return (
@@ -86,19 +93,17 @@ export function AdminOrders() {
     );
   });
 
-  // 🔥 Update Status
+  // ⭐ UPDATE STATUS
   const updateStatus = async (id, value) => {
     await updateDoc(doc(db, "orders", id), { status: value });
   };
 
-  // 🔥 Update Delivery Boy Name
-  const updateBoyName = async (id, value) => {
-    await updateDoc(doc(db, "orders", id), { boyName: value });
+  const updateBoyName = async (id, val) => {
+    await updateDoc(doc(db, "orders", id), { boyName: val });
   };
 
-  // 🔥 Update Delivery Boy Phone
-  const updateBoyPhone = async (id, value) => {
-    await updateDoc(doc(db, "orders", id), { boyPhone: value });
+  const updateBoyPhone = async (id, val) => {
+    await updateDoc(doc(db, "orders", id), { boyPhone: val });
   };
 
   return (
@@ -135,9 +140,10 @@ export function AdminOrders() {
               <td>{o.orderId}</td>
               <td>{o.userName}</td>
               <td>{o.userMobile}</td>
-              <td>₹{o.total}</td>
 
-              {/* Payment Color Fix */}
+              {/* ⭐ FIX total crash */}
+              <td>₹{o.total || o.totalPrice}</td>
+
               <td>
                 <span
                   style={{
@@ -154,7 +160,6 @@ export function AdminOrders() {
                 </span>
               </td>
 
-              {/* Status */}
               <td>
                 <select
                   value={o.status}
@@ -168,7 +173,6 @@ export function AdminOrders() {
                 </select>
               </td>
 
-              {/* Items */}
               <td>
                 <ul>
                   {o.items?.map((i, idx) => (
@@ -179,11 +183,9 @@ export function AdminOrders() {
                 </ul>
               </td>
 
-              {/* Delivery Info */}
               <td>
                 <b>Delivery Address:</b> <br />
-                {o.address || "Not Provided"} <br />
-                <br />
+                {o.address || "Not Provided"} <br /><br />
 
                 <b>Customer Address:</b>
                 <p>{o.userAddress}</p>
@@ -199,10 +201,10 @@ export function AdminOrders() {
                 <input
                   className="delivery-input"
                   type="tel"
-                  style={{ marginTop: 6 }}
                   placeholder="Phone"
                   value={o.boyPhone || ""}
                   onChange={(e) => updateBoyPhone(o.id, e.target.value)}
+                  style={{ marginTop: 6 }}
                 />
               </td>
             </tr>

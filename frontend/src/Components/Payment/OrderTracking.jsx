@@ -24,28 +24,36 @@ export function OrderTracking() {
   const [lastStatus, setLastStatus] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // 🔥 Fix: Find correct Firestore document by order.orderId
-  const findOrderDoc = async () => {
-    const q = query(collection(db, "orders"), where("orderId", "==", orderId));
-    const snap = await getDocs(q);
+  // ⭐ Find the actual Firestore doc ID by orderId
+  const findFirestoreDoc = async () => {
+    try {
+      const q = query(
+        collection(db, "orders"),
+        where("orderId", "==", Number(orderId)) // 🔥 FIXED: number match
+      );
 
-    if (!snap.empty) {
-      const d = snap.docs[0];
-      setDocId(d.id);
-      return d.id;
+      const snap = await getDocs(q);
+
+      if (!snap.empty) {
+        const d = snap.docs[0];
+        setDocId(d.id);
+        return d.id;
+      }
+
+      return null;
+    } catch (err) {
+      console.error("Doc lookup failed:", err);
+      return null;
     }
-
-    return null;
   };
 
-  // Load order details
+  // ⭐ Load order details
   const loadOrder = async () => {
     try {
       let id = docId;
 
-      // If docId is unknown, find it first
       if (!id) {
-        id = await findOrderDoc();
+        id = await findFirestoreDoc();
         if (!id) {
           setOrder(null);
           setLoading(false);
@@ -65,19 +73,21 @@ export function OrderTracking() {
       const data = snap.data();
       setOrder(data);
 
-      // Play sound on status change
+      // 🔔 Play status sound
       if (data.status !== lastStatus) {
         setLastStatus(data.status);
-        document.getElementById("statusSound")?.play().catch(() => { });
+        const audio = document.getElementById("statusSound");
+        audio?.play().catch(() => { });
       }
 
-      // ETA calculation
+      // ETA
       if (data.createdAt?.toDate) {
         const start = data.createdAt.toDate().getTime();
         const now = Date.now();
-        const diffMin = Math.floor((now - start) / 60000);
-        setEtaMinutes(Math.max(45 - diffMin, 0));
+        const diff = Math.floor((now - start) / 60000);
+        setEtaMinutes(Math.max(45 - diff, 0));
       }
+
     } catch (err) {
       console.error("Tracking error:", err);
       setOrder(null);
@@ -86,23 +96,21 @@ export function OrderTracking() {
     setLoading(false);
   };
 
-  // Auto reload every 4 seconds
+  // Auto refresh
   useEffect(() => {
     loadOrder();
     const interval = setInterval(loadOrder, 4000);
     return () => clearInterval(interval);
   }, [orderId, docId]);
 
-  // Clear cart when delivered
+  // clear cart when delivered
   useEffect(() => {
-    if (order?.status === "Delivered") {
-      clearCart();
-    }
+    if (order?.status === "Delivered") clearCart();
   }, [order?.status]);
 
-  // UI
+  // UI Rendering
   if (loading) {
-    return <h3 style={{ textAlign: "center", marginTop: 40 }}>Loading order details...</h3>;
+    return <h3 style={{ textAlign: "center", marginTop: 50 }}>Loading order...</h3>;
   }
 
   if (!order) {
@@ -125,7 +133,7 @@ export function OrderTracking() {
       <h2 className="tracking-title">🚚 Live Order Tracking</h2>
 
       <p><b>Order ID:</b> {orderId}</p>
-      <p><b>Total:</b> ₹{order.total}</p>
+      <p><b>Total:</b> ₹{order.total || order.totalPrice}</p>
 
       {etaMinutes !== null && order.status !== "Delivered" && (
         <p className="eta-time">⏳ Arriving in approx <b>{etaMinutes} min</b></p>
@@ -139,7 +147,10 @@ export function OrderTracking() {
 
       <div className="steps-wrapper">
         {steps.map((step, index) => (
-          <div key={step} className={`step ${index <= currentIndex ? "step-active" : ""}`}>
+          <div
+            key={step}
+            className={`step ${index <= currentIndex ? "step-active" : ""}`}
+          >
             <div className="step-circle">{index + 1}</div>
             <p className="step-label">{step}</p>
           </div>
