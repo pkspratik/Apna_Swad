@@ -3,7 +3,7 @@ import "./Payment.css";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext/AuthContext";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 
 export function Payment() {
@@ -17,15 +17,14 @@ export function Payment() {
   const UPI_ID = "pratikk512@ybl";
   const UPI_NAME = "Pratik Singh";
 
-  // ⭐ Redirect if not logged in
+  // Force login
   useEffect(() => {
     if (!user) {
-      alert("Please login first");
+      alert("Please login to continue");
       navigate("/login?redirect=payment");
     }
   }, [user, navigate]);
 
-  // ⭐ Load address from localStorage
   useEffect(() => {
     const info = localStorage.getItem("apnaSwad_delivery_info");
     if (info) setDeliveryInfo(JSON.parse(info));
@@ -43,21 +42,24 @@ export function Payment() {
   )}&pn=${encodeURIComponent(
     UPI_NAME
   )}&am=${encodeURIComponent(totalPrice)}&cu=INR&tn=${encodeURIComponent(
-    "Apna Swad Food Order"
+    "Apna Swad Order"
   )}`;
 
   const getCartBackup = () =>
     cart.length > 0 ? cart : JSON.parse(localStorage.getItem("cartItems") || "[]");
 
-  // ⭐ SAVE ORDER USING AUTO DOC ID (IMPORTANT FIX)
-  const saveOrderToFirebase = async (mode, addressText) => {
+  // ⭐ SAVE ORDER USING orderId AS FIRESTORE DOC ID
+  const saveOrderToFirebase = async (orderId, mode, addressText) => {
     const cartBackup = getCartBackup();
     const currentUser = auth.currentUser;
 
     if (!currentUser) throw new Error("User not logged in!");
     if (cartBackup.length === 0) throw new Error("Cart empty!");
 
+    const orderRef = doc(db, "orders", String(orderId));
+
     const orderDetails = {
+      orderId: Number(orderId),
       userId: currentUser.uid,
       items: cartBackup,
       total: totalPrice,
@@ -67,52 +69,48 @@ export function Payment() {
       createdAt: serverTimestamp(),
       boyName: "",
       boyPhone: "",
-      orderId: Date.now(), // visible to user
     };
 
-    const docRef = await addDoc(collection(db, "orders"), orderDetails);
+    await setDoc(orderRef, orderDetails, { merge: true });
 
-    return { ...orderDetails, docId: docRef.id };
+    return orderDetails;
   };
 
-  // ---------------- COD ----------------
+  // COD
   const handleCODOrder = async () => {
-    if (!deliveryInfo?.fullAddress)
-      return alert("Delivery address missing!");
+    if (!deliveryInfo?.fullAddress) return alert("Please get your location");
 
     const addressText = `${deliveryInfo.fullAddress} — Phone: ${deliveryInfo.phone}`;
 
     try {
-      const saved = await saveOrderToFirebase("cod", addressText);
+      const orderId = Date.now(); // ⭐ visible + used as doc ID
 
-      // store for fallback
-      localStorage.setItem("apnaSwad_last_order_doc", saved.docId);
+      const saved = await saveOrderToFirebase(orderId, "cod", addressText);
 
-      navigate("/order-success", {
-        state: saved,
-      });
+      localStorage.setItem("apnaSwad_last_order", orderId);
+
+      navigate("/order-success", { state: saved });
     } catch (err) {
-      alert("COD error: " + err.message);
+      alert("COD Failed: " + err.message);
     }
   };
 
-  // ---------------- UPI ----------------
+  // UPI
   const handleUPIPaid = async () => {
-    if (!deliveryInfo?.fullAddress)
-      return alert("Delivery address missing!");
+    if (!deliveryInfo?.fullAddress) return alert("Please get your location");
 
     const addressText = `${deliveryInfo.fullAddress} — Phone: ${deliveryInfo.phone}`;
 
     try {
-      const saved = await saveOrderToFirebase("upi", addressText);
+      const orderId = Date.now();
 
-      localStorage.setItem("apnaSwad_last_order_doc", saved.docId);
+      const saved = await saveOrderToFirebase(orderId, "upi", addressText);
 
-      navigate("/order-success", {
-        state: saved,
-      });
+      localStorage.setItem("apnaSwad_last_order", orderId);
+
+      navigate("/order-success", { state: saved });
     } catch (err) {
-      alert("UPI error: " + err.message);
+      alert("UPI Failed: " + err.message);
     }
   };
 
@@ -140,13 +138,12 @@ export function Payment() {
         onClick={() => setPaymentMethod("upi")}
       >
         <input type="radio" checked={paymentMethod === "upi"} readOnly />
-        <label>📱 UPI Payment (GPay, PhonePe, Paytm)</label>
+        <label>📱 UPI Payment</label>
       </div>
 
       {paymentMethod === "upi" && (
         <div className="upi-box">
           <h3>Scan & Pay</h3>
-
           <img
             className="upi-qr"
             src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
@@ -154,8 +151,10 @@ export function Payment() {
             )}`}
             alt="UPI QR"
           />
-
-          <button className="upi-pay-btn" onClick={() => (window.location.href = upiLink)}>
+          <button
+            className="upi-pay-btn"
+            onClick={() => (window.location.href = upiLink)}
+          >
             Open UPI App
           </button>
 
