@@ -43,6 +43,9 @@ import { OrderSuccess } from "../Payment/OrderSuccess";
 import { OrderTracking } from "../Payment/OrderTracking";
 import { ContactUs } from "../ContactUs/ContactUs";
 
+
+import { Debug } from "../../Pages/Debug/Debug";
+
 export default function App() {
   return (
     <CartProvider>
@@ -118,6 +121,13 @@ export default function App() {
             </RoleRoute>
           }
         />
+
+        {/* ===========================
+           🌐 Debug Routes
+        ============================ */}
+
+
+        <Route path="/debug" element={<Debug />} />
 
 
         {/* ===========================
