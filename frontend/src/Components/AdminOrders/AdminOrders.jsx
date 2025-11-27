@@ -17,41 +17,45 @@ export function AdminOrders() {
   const [users, setUsers] = useState({});
   const [search, setSearch] = useState("");
 
-  // ⭐ Fetch user profiles (name, mobile, address)
-  const loadUsers = async () => {
-    const snap = await getDocs(collection(db, "users"));
-    let data = {};
-    snap.forEach((u) => (data[u.id] = u.data()));
-    setUsers(data); // { uid: {name, mobile, address...} }
-  };
-
   // 🔥 Load Orders Real-Time
   useEffect(() => {
-    loadUsers();
+    const loadData = async () => {
+      // First load users
+      const snap = await getDocs(collection(db, "users"));
+      let userData = {};
+      snap.forEach((u) => (userData[u.id] = u.data()));
+      setUsers(userData);
 
-    const unsub = onSnapshot(collection(db, "orders"), (snapshot) => {
-      const list = snapshot.docs.map((d) => {
-        const order = d.data();
-        const userInfo = users[order.userId] || {};
+      // Then subscribe to orders
+      const unsub = onSnapshot(collection(db, "orders"), (snapshot) => {
+        const list = snapshot.docs.map((d) => {
+          const order = d.data();
+          const userInfo = userData[order.userId] || {};
 
-        return {
-          id: d.id,
-          ...order,
+          return {
+            id: d.id,
+            ...order,
 
-          // ⭐ New fields merged into order
-          userName: userInfo.name || "Unknown",
-          userMobile: userInfo.mobile || "N/A",
-          userAddress: userInfo.address || "",
-        };
+            // ⭐ New fields merged into order
+            userName: userInfo.name || "Unknown",
+            userMobile: userInfo.mobile || "N/A",
+            userAddress: userInfo.address || "",
+          };
+        });
+
+        // Sort latest first
+        list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        setOrders(list);
       });
 
-      // Sort latest first
-      list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-      setOrders(list);
-    });
+      return unsub;
+    };
 
-    return () => unsub();
-  }, [users]);
+    const unsubscribe = loadData();
+    return () => {
+      unsubscribe.then((unsub) => unsub && unsub());
+    };
+  }, []); // Empty dependency array - load once on mount
 
   // Remove duplicate orderIds
   const uniqueOrders = Array.from(new Map(orders.map((o) => [o.orderId, o])).values());

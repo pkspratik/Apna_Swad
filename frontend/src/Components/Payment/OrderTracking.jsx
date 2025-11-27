@@ -25,17 +25,10 @@ export function OrderTracking() {
   const [lastStatus, setLastStatus] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // ⭐ Block non-logged users
-  useEffect(() => {
-    if (!user) {
-      alert("Please login to see your order details");
-      navigate("/login?redirect=order-track/" + orderId);
-    }
-  }, [user]);
+  // ⭐ Order tracking is now PUBLIC - anyone with order ID can track
+  // This allows tracking on any device without login
 
   const loadOrder = async () => {
-    if (!user) return; // safety
-
     try {
       const orderRef = doc(db, "orders", String(orderId));
       const snap = await getDoc(orderRef);
@@ -48,13 +41,8 @@ export function OrderTracking() {
 
       const data = snap.data();
 
-      // ⭐ SECURITY: Ensure order belongs to the logged user
-      if (data.userId !== user.uid) {
-        alert("This order does not belong to your account.");
-        navigate("/");
-        return;
-      }
-
+      // ⭐ No user validation - public tracking
+      // Order ID itself acts as the authentication token
       setOrder(data);
 
       // Status sound
@@ -84,11 +72,7 @@ export function OrderTracking() {
     loadOrder();
     const interval = setInterval(loadOrder, 4000);
     return () => clearInterval(interval);
-  }, [orderId, user]);
-
-  if (!user) {
-    return null; // protected by login check above
-  }
+  }, [orderId]); // Only depend on orderId, not user
 
   if (loading) {
     return <h3 style={{ textAlign: "center", marginTop: 40 }}>Loading order details...</h3>;

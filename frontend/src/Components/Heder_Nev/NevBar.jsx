@@ -173,6 +173,30 @@ export function NevBar(prop) {
           )}
 
           {/* =============================
+              🔐 PROFILE ICON
+              Show only when user logged in (non-admin)
+          ============================== */}
+          {user && role !== "admin" && (
+            <Link
+              to="/profile"
+              className="d-flex align-items-center justify-content-center rounded-circle"
+              style={{
+                width: "38px",
+                height: "38px",
+                backgroundColor: "#667eea",
+                boxShadow: "0 0 10px rgba(102, 126, 234, 0.5)",
+                cursor: "pointer",
+                textDecoration: "none",
+                color: "#fff",
+                fontSize: "20px"
+              }}
+              title="My Profile & Orders"
+            >
+              <i className="bi bi-person-circle"></i>
+            </Link>
+          )}
+
+          {/* =============================
               🔐 LOGOUT BUTTON (Optional)
               Show only when user logged in
           ============================== */}

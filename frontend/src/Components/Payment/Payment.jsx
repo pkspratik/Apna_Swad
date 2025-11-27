@@ -2,11 +2,13 @@ import React, { useState, useEffect } from "react";
 import "./Payment.css";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext/AuthContext";
 import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../../firebase";   // 👈 import auth too
 
 export function Payment() {
   const { cart } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -14,6 +16,14 @@ export function Payment() {
 
   const UPI_ID = "pratikk512@ybl";
   const UPI_NAME = "Pratik Singh";
+
+  // ⭐ ENFORCE LOGIN - Redirect if not logged in
+  useEffect(() => {
+    if (!user) {
+      alert("Please login to complete payment");
+      navigate("/login?redirect=payment");
+    }
+  }, [user, navigate]);
 
   const subtotal = cart.reduce(
     (sum, item) => sum + Number(item.price.replace("₹", "")) * item.qty,

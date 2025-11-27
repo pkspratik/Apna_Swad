@@ -42,7 +42,7 @@ import { UPIPayment } from "../Payment/UPIPayment";
 import { OrderSuccess } from "../Payment/OrderSuccess";
 import { OrderTracking } from "../Payment/OrderTracking";
 import { ContactUs } from "../ContactUs/ContactUs";
-
+import { UserProfile } from "../UserProfile/UserProfile";
 
 import { Debug } from "../../Pages/Debug/Debug";
 
@@ -155,6 +155,7 @@ export default function App() {
         <Route path="/upi-payment" element={<UPIPayment />} />
         <Route path="/order-success" element={<OrderSuccess />} />
         <Route path="/order-tracking/:orderId" element={<OrderTracking />} />
+        <Route path="/profile" element={<UserProfile />} />
 
       </Routes>
     </CartProvider>

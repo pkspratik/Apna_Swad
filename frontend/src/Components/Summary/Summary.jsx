@@ -99,8 +99,13 @@ export function Summary() {
       return;
     }
 
-    // Generate a single unique order ID
-    const orderId = Date.now().toString();
+    // ⭐ Generate unique order ID with user-specific component
+    // Format: timestamp + last 6 chars of userId + random 3 digits
+    // This prevents conflicts when multiple users order at the exact same time
+    const timestamp = Date.now();
+    const userSuffix = user.uid ? user.uid.slice(-6) : "000000";
+    const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
+    const orderId = `${timestamp}${userSuffix}${randomSuffix}`;
 
     localStorage.setItem("apnaSwad_current_order", orderId);
     localStorage.setItem(
