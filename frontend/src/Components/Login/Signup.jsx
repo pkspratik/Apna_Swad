@@ -12,35 +12,47 @@ export default function Signup() {
   const navigate = useNavigate();
   const { setUser, setRole } = useAuth();
 
-  const mobile = state?.mobile || ""; // optional now
   const initialRole = state?.role === "seller" ? "seller" : "buyer";
+
+  // ⭐ Now mobile number always required
+  const [mobile, setMobile] = useState(state?.mobile || "");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [address, setAddress] = useState(""); // optional
+  const [address, setAddress] = useState("");
   const [role, setRoleState] = useState(initialRole);
   const [shopName, setShopName] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const validateMobile = (num) => /^[0-9]{10}$/.test(num);
 
   const handleSignup = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
+    if (!validateMobile(mobile)) {
+      setError("Please enter a valid 10-digit mobile number");
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Create user with Firebase Auth
+      // Create Firebase Auth Account
       const userCredential = await createAccount(email, password);
       const user = userCredential.user;
 
-      // Store additional user data in Firestore
+      // Create Firestore user data
       const userData = {
-        email,
+        uid: user.uid,
         name,
-        mobile: mobile ? "+91" + mobile : "",
-        address: address || "",
-        role: role,
+        email,
+        mobile: "+91" + mobile,
+        address,
+        role,
         createdAt: new Date().toISOString(),
       };
 
@@ -48,25 +60,27 @@ export default function Signup() {
         userData.shopName = shopName;
       }
 
+      // Save Firestore User Profile
       await setDoc(doc(db, "users", user.uid), userData);
 
-      // Update auth context
+      // Update context
       setUser(user);
       setRole(role);
 
-      // Navigate based on role
+      // Redirect user
       if (role === "buyer") navigate("/");
-      if (role === "seller") navigate("/seller");
+      if (role === "seller") navigate("/seller-dashboard");
     } catch (err) {
       console.error("Signup error:", err);
+
       if (err.code === "auth/email-already-in-use") {
-        setError("Email already in use");
+        setError("Email already exists");
       } else if (err.code === "auth/weak-password") {
-        setError("Password should be at least 6 characters");
+        setError("Password must be at least 6 characters");
       } else if (err.code === "auth/invalid-email") {
         setError("Invalid email address");
       } else {
-        setError("Signup failed. Please try again.");
+        setError("Signup failed. Try again.");
       }
     } finally {
       setLoading(false);
@@ -81,48 +95,61 @@ export default function Signup() {
         <div className="card p-4 shadow-lg" style={{ maxWidth: "450px", margin: "auto" }}>
           <h3 className="text-center mb-3">Create Account</h3>
 
-          {mobile && (
-            <p className="text-center text-muted">Mobile: +91 {mobile}</p>
-          )}
-
           {error && <p style={{ color: "red", marginBottom: 10 }}>{error}</p>}
 
           <form onSubmit={handleSignup}>
+            {/* Full Name */}
             <input
               type="text"
               className="form-control mb-3"
-              placeholder="Full Name*"
+              placeholder="Full Name *"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
             />
 
+            {/* Mobile Number */}
+            <input
+              type="tel"
+              className="form-control mb-3"
+              placeholder="Mobile Number *"
+              maxLength="10"
+              value={mobile}
+              onChange={(e) => setMobile(e.target.value.replace(/[^0-9]/g, ""))}
+              required
+            />
+
+            {/* Email */}
             <input
               type="email"
               className="form-control mb-3"
-              placeholder="Email Address*"
+              placeholder="Email Address *"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
 
+            {/* Password */}
             <input
               type="password"
               className="form-control mb-3"
-              placeholder="Password*"
+              placeholder="Password *"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
 
+            {/* Full Address */}
             <textarea
               className="form-control mb-3"
-              placeholder="Full Address (Optional)"
+              placeholder="Your Full Address *"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
+              required
             />
 
-            <label className="mb-1"><b>Select Role*</b></label>
+            {/* Select role */}
+            <label><b>Select Role *</b></label>
             <select
               className="form-select mb-3"
               value={role}
@@ -133,11 +160,12 @@ export default function Signup() {
               <option value="seller">Restaurant / Seller</option>
             </select>
 
+            {/* Seller Shop Name */}
             {role === "seller" && (
               <input
                 type="text"
                 className="form-control mb-3"
-                placeholder="Restaurant / Shop Name*"
+                placeholder="Restaurant / Shop Name *"
                 value={shopName}
                 onChange={(e) => setShopName(e.target.value)}
                 required

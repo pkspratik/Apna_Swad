@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import "./OrderTracking.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext/AuthContext";
 import { db } from "../../firebase";
-import { doc, getDoc } from "firebase/firestore";  // 👈 updated import
+import { doc, getDoc } from "firebase/firestore";
 
 const steps = [
   "Order Placed",
@@ -17,39 +18,60 @@ export function OrderTracking() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { clearCart } = useCart();
+  const { user } = useAuth();
 
   const [order, setOrder] = useState(null);
   const [etaMinutes, setEtaMinutes] = useState(null);
   const [lastStatus, setLastStatus] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // 🔥 Direct read by documentID (NO query → NO permission error)
+  // ⭐ Block non-logged users
+  useEffect(() => {
+    if (!user) {
+      alert("Please login to see your order details");
+      navigate("/login?redirect=order-track/" + orderId);
+    }
+  }, [user]);
+
   const loadOrder = async () => {
+    if (!user) return; // safety
+
     try {
       const orderRef = doc(db, "orders", String(orderId));
       const snap = await getDoc(orderRef);
 
-      if (snap.exists()) {
-        const data = snap.data();
-        setOrder(data);
-
-        // Play sound when status changes
-        if (data.status !== lastStatus) {
-          setLastStatus(data.status);
-          const audio = document.getElementById("statusSound");
-          audio?.play().catch(() => {});
-        }
-
-        // ETA calculation
-        if (data.createdAt?.toDate) {
-          const start = data.createdAt.toDate().getTime();
-          const now = Date.now();
-          const diffMin = Math.floor((now - start) / (1000 * 60));
-          setEtaMinutes(Math.max(45 - diffMin, 0));
-        }
-      } else {
+      if (!snap.exists()) {
         setOrder(null);
+        setLoading(false);
+        return;
       }
+
+      const data = snap.data();
+
+      // ⭐ SECURITY: Ensure order belongs to the logged user
+      if (data.userId !== user.uid) {
+        alert("This order does not belong to your account.");
+        navigate("/");
+        return;
+      }
+
+      setOrder(data);
+
+      // Status sound
+      if (data.status !== lastStatus) {
+        setLastStatus(data.status);
+        const audio = document.getElementById("statusSound");
+        audio?.play().catch(() => { });
+      }
+
+      // ETA
+      if (data.createdAt?.toDate) {
+        const start = data.createdAt.toDate().getTime();
+        const now = Date.now();
+        const diffMin = Math.floor((now - start) / (1000 * 60));
+        setEtaMinutes(Math.max(45 - diffMin, 0));
+      }
+
     } catch (err) {
       console.error("Order tracking error:", err);
       setOrder(null);
@@ -60,9 +82,13 @@ export function OrderTracking() {
 
   useEffect(() => {
     loadOrder();
-    const interval = setInterval(loadOrder, 3000);
+    const interval = setInterval(loadOrder, 4000);
     return () => clearInterval(interval);
-  }, [orderId]);
+  }, [orderId, user]);
+
+  if (!user) {
+    return null; // protected by login check above
+  }
 
   if (loading) {
     return <h3 style={{ textAlign: "center", marginTop: 40 }}>Loading order details...</h3>;
@@ -87,7 +113,7 @@ export function OrderTracking() {
 
       <h2 className="tracking-title">🚚 Live Order Tracking</h2>
 
-      <p><b>Order ID:</b> {order.orderId}</p>
+      <p><b>Order ID:</b> {orderId}</p>
       <p><b>Total:</b> ₹{order.total}</p>
 
       {etaMinutes !== null && order.status !== "Delivered" && (

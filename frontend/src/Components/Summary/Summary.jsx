@@ -21,6 +21,7 @@ export function Summary() {
   const restaurantLng = 84.835471;
 
   const toRad = (value) => (value * Math.PI) / 180;
+
   const getDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371;
     const dLat = toRad(lat2 - lat1);
@@ -28,8 +29,8 @@ export function Summary() {
     const a =
       Math.sin(dLat / 2) ** 2 +
       Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) ** 2;
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
@@ -38,19 +39,15 @@ export function Summary() {
     return `${distance.toFixed(2)} KM`;
   };
 
-  // ⭐ FINAL FIX — Geolocation permission + allow message
+  // ⭐ Get GPS + Address
   const handleGetLocation = () => {
-    setChecking(true);
-
-    // Ask browser permission FIRST (fix for deploy on HTTPS)
-    if (navigator.permissions) {
-      navigator.permissions.query({ name: "geolocation" }).then((result) => {
-        if (result.state === "denied") {
-          alert("⚠ Please allow Location access from browser settings to continue.");
-          setChecking(false);
-        }
-      });
+    if (!user) {
+      alert("Please login first");
+      navigate("/login?redirect=summary");
+      return;
     }
+
+    setChecking(true);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -59,8 +56,8 @@ export function Summary() {
 
         const distance = getDistance(lat, lng, restaurantLat, restaurantLng);
         setUserDistance(distance);
-        setDeliveryAvailable(true);
 
+        setDeliveryAvailable(true);
         setUser({ ...user, lat, lng });
 
         fetch(
@@ -74,14 +71,13 @@ export function Summary() {
         setChecking(false);
       },
       () => {
-        alert("⚠ Location blocked! Please enable GPS permission to place order.");
+        alert("Please enable GPS permission");
         setChecking(false);
       },
       { enableHighAccuracy: true }
     );
   };
 
-  // Calculate totals
   const totalAmount = cart.reduce(
     (sum, item) => sum + Number(item.price.replace("₹", "")) * item.qty,
     0
@@ -90,33 +86,34 @@ export function Summary() {
   const deliveryCharge = totalAmount >= 499 ? 0 : 40;
   const grandTotal = totalAmount + deliveryCharge;
 
-  // ⭐ Payment navigation
+  // ⭐ NO ORDER CREATION HERE ANYMORE
   const handlePayment = () => {
     if (!user) {
-      alert("Please login first");
-      navigate("/login");
+      alert("Please login to continue");
+      navigate("/login?redirect=summary");
       return;
     }
 
     if (!userAddress) {
-      alert("⚠ Please click location button and allow GPS.");
+      alert("Click the location button before payment");
       return;
     }
 
-    const deliveryInfo = {
-      fullAddress: userAddress,
-      phone: user?.phone || "",
-      coords: { lat: user?.lat, lng: user?.lng },
-      distance: userDistance,
-    };
-
-    localStorage.setItem("apnaSwad_delivery_info", JSON.stringify(deliveryInfo));
-    localStorage.removeItem("apnaSwad_order_saved"); // reset duplicate protection
-
+    // Generate a single unique order ID
     const orderId = Date.now().toString();
-    localStorage.setItem("apnaSwad_current_order", orderId);
 
-    navigate("/payment");
+    localStorage.setItem("apnaSwad_current_order", orderId);
+    localStorage.setItem(
+      "apnaSwad_delivery_info",
+      JSON.stringify({
+        fullAddress: userAddress,
+        phone: user?.phone || "",
+        coords: { lat: user?.lat, lng: user?.lng },
+        distance: userDistance,
+      })
+    );
+
+    navigate("/payment?orderId=" + orderId);
   };
 
   return (
@@ -130,14 +127,14 @@ export function Summary() {
           onClick={handleGetLocation}
           disabled={checking}
         >
-          {checking ? "Detecting GPS location..." : "Click here for Your Location"}
+          {checking ? "Detecting GPS..." : "Click here for Your Location"}
         </button>
 
-        {deliveryAvailable === true && (
-          <p style={{ color: "green", marginTop: 10, lineHeight: "22px" }}>
-            ✔ Delivery available 🎉 <br />
-            📍 Distance: {formatDistance(userDistance)} <br />
-            📌 <b>Your address:</b> <br />
+        {deliveryAvailable && (
+          <p style={{ color: "green", marginTop: 10 }}>
+            ✔ Delivery available<br />
+            📍 Distance: {formatDistance(userDistance)}<br />
+            📌 <b>Your address:</b><br />
             {userAddress}
           </p>
         )}
@@ -164,18 +161,18 @@ export function Summary() {
           <p>Subtotal</p>
           <p>₹{totalAmount}</p>
         </div>
+
         <div className="price-row">
           <p>Delivery Charges</p>
-          <p style={{ color: deliveryCharge === 0 ? "green" : "black" }}>
-            {deliveryCharge === 0 ? "FREE" : `₹${deliveryCharge}`}
-          </p>
+          <p>{deliveryCharge === 0 ? "FREE" : `₹${deliveryCharge}`}</p>
         </div>
+
         <div className="price-total">
           <strong>Total Amount</strong>
           <strong>₹{grandTotal}</strong>
         </div>
 
-        {deliveryAvailable === true && (
+        {deliveryAvailable && (
           <button className="payment-btn" onClick={handlePayment}>
             Proceed to Payment
           </button>

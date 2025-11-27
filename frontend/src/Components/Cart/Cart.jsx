@@ -17,7 +17,7 @@ export function Cart() {
   const [deliveryAvailable, setDeliveryAvailable] = useState(null);
   const [userDistance, setUserDistance] = useState(null);
 
-  // 🔥 Correct restaurant coordinates
+  // 🔥 Restaurant coordinates
   const restaurantLat = 26.033207;
   const restaurantLng = 84.835460;
 
@@ -36,7 +36,7 @@ export function Cart() {
       Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // ⛳ distance in KM
+    return R * c; // KM
   };
 
   const formatDistance = (distance) => {
@@ -46,7 +46,14 @@ export function Cart() {
     return `${distance.toFixed(2)} KM`;
   };
 
+  // 🔥 Login Required for Delivery Check
   const handleCheckDelivery = () => {
+    if (!user) {
+      alert("Please login first to check delivery availability");
+      navigate("/login?redirect=cart");
+      return;
+    }
+
     setChecking(true);
 
     navigator.geolocation.getCurrentPosition(
@@ -57,15 +64,17 @@ export function Cart() {
         const distance = getDistance(lat, lng, restaurantLat, restaurantLng);
         setUserDistance(distance);
 
+        // Distance check (3 KM)
         if (distance <= 3) {
           setDeliveryAvailable(true);
-          setUser({ ...user, lat, lng });
         } else {
-          //setDeliveryAvailable(false);     i disable this code
-          {/* Temporarily allow delivery for testing */} 
+          // Temporary allow for testing — your choice
           setDeliveryAvailable(true);
-          setUser({ ...user, lat, lng });
         }
+
+        // Save location inside Auth user object
+        setUser({ ...user, lat, lng });
+
         setChecking(false);
       },
       () => {
@@ -80,11 +89,20 @@ export function Cart() {
     );
   };
 
+  // 🔥 Checkout requires Login
   const handleCheckout = () => {
     if (!user) {
+      alert("Please login before checkout");
       navigate("/login?redirect=summary");
       return;
     }
+
+    // Also check delivery status
+    if (deliveryAvailable !== true) {
+      alert("Please check delivery availability first");
+      return;
+    }
+
     navigate("/summary");
   };
 
@@ -102,7 +120,11 @@ export function Cart() {
       </div>
 
       {/* Delivery Check */}
-      <button className="checkout-btn" onClick={handleCheckDelivery} disabled={checking}>
+      <button
+        className="checkout-btn"
+        onClick={handleCheckDelivery}
+        disabled={checking}
+      >
         {checking ? "Checking..." : "Check food delivery availability"}
       </button>
 
@@ -116,9 +138,9 @@ export function Cart() {
 
       {deliveryAvailable === false && (
         <p style={{ color: "red", textAlign: "center", marginTop: 6 }}>
-          ❌ Sorry, you are outside our delivery range (3 KM)
+          ❌ Sorry, you are outside the 3 KM delivery range
           <br />
-          📍 Your distance from restaurant: {formatDistance(userDistance)}
+          📍 Distance: {formatDistance(userDistance)}
         </p>
       )}
 

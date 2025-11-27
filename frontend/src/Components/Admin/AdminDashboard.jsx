@@ -1,29 +1,49 @@
 import React, { useEffect, useState } from "react";
 import "./AdminDashboard.css";
-import { collection, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { collection, onSnapshot, deleteDoc, doc, getDocs } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext/AuthContext";
 
 export function AdminDashboard() {
   const [orders, setOrders] = useState([]);
+  const [users, setUsers] = useState({});
   const [selectedOrders, setSelectedOrders] = useState([]);
   const { logout } = useAuth();
   const navigate = useNavigate();
 
+  // ⭐ FETCH USERS FROM FIRESTORE
+  const loadUsers = async () => {
+    const snap = await getDocs(collection(db, "users"));
+    let map = {};
+    snap.forEach((d) => {
+      map[d.id] = d.data();
+    });
+    setUsers(map); // { uid: {...userdata} }
+  };
+
+  // ⭐ FETCH ORDERS + MERGE USER DATA
   useEffect(() => {
+    loadUsers();
+
     const unsubscribe = onSnapshot(
       collection(db, "orders"),
       (snapshot) => {
-        const list = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
+        const list = snapshot.docs.map((d) => {
+          const data = d.data();
+          const userData = users[data.userId] || {};
 
-        // Sort newest first
+          return {
+            id: d.id,
+            ...data,
+            userName: userData.name || "Unknown",
+            userMobile: userData.mobile || "Not Available",
+            userAddress: userData.address || "No Address Provided",
+          };
+        });
+
         list.sort(
-          (a, b) =>
-            (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+          (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
         );
 
         setOrders(list);
@@ -34,7 +54,7 @@ export function AdminDashboard() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [users]); // reload when users loaded
 
   // 🔴 Logout handler
   const handleLogout = async () => {
@@ -63,11 +83,9 @@ export function AdminDashboard() {
 
   // Delete selected orders
   const deleteSelected = async () => {
-    if (!selectedOrders.length)
-      return alert("No orders selected");
+    if (!selectedOrders.length) return alert("No orders selected");
 
-    if (!window.confirm(`Delete ${selectedOrders.length} orders?`))
-      return;
+    if (!window.confirm(`Delete ${selectedOrders.length} orders?`)) return;
 
     try {
       for (const id of selectedOrders) {
@@ -94,10 +112,7 @@ export function AdminDashboard() {
         <h2>📊 Admin Dashboard</h2>
 
         <div className="top-buttons">
-          <button
-            className="orders-btn"
-            onClick={() => navigate("/admin/orders")}
-          >
+          <button className="orders-btn" onClick={() => navigate("/admin/orders")}>
             📦 View Orders
           </button>
 
@@ -125,7 +140,9 @@ export function AdminDashboard() {
           <tr>
             <th>Select</th>
             <th>Order ID</th>
-            <th>Customer</th>
+            <th>Customer Name</th>
+            <th>Mobile</th>
+            <th>Delivery Address</th>
             <th>Items</th>
             <th>Total</th>
             <th>Pay Method</th>
@@ -156,7 +173,12 @@ export function AdminDashboard() {
 
               <td>{o.orderId || o.id}</td>
 
-              <td>{o.address?.split(",")[0] || "Unknown"}</td>
+              {/* ⭐ New Fields */}
+              <td>{o.userName}</td>
+
+              <td>{o.userMobile}</td>
+
+              <td>{o.address || o.userAddress}</td>
 
               <td>
                 {o.items?.length
@@ -170,18 +192,14 @@ export function AdminDashboard() {
 
               <td>
                 <span
-                  className={`status-badge ${(o.status || "Pending").replace(/ /g, "-")
-                    }`}
+                  className={`status-badge ${(o.status || "Pending").replace(/ /g, "-")}`}
                 >
                   {o.status || "Pending"}
                 </span>
               </td>
 
               <td>
-                <button
-                  className="delete-btn"
-                  onClick={() => handleDelete(o.id)}
-                >
+                <button className="delete-btn" onClick={() => handleDelete(o.id)}>
                   ❌
                 </button>
               </td>
