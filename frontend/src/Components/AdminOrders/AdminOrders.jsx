@@ -1,12 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./AdminOrders.css";
-import {
-  collection,
-  onSnapshot,
-  doc,
-  updateDoc,
-  getDocs,
-} from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, getDocs } from "firebase/firestore";
 import { db } from "../../firebase";
 
 const statusOptions = [
@@ -22,61 +16,56 @@ export function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState({});
   const [search, setSearch] = useState("");
+  const [usersLoaded, setUsersLoaded] = useState(false);
 
-  // 🔥 Load users + Orders
+  // Load USERS first
+  const loadUsers = async () => {
+    const snap = await getDocs(collection(db, "users"));
+    let map = {};
+    snap.forEach((u) => (map[u.id] = u.data()));
+    setUsers(map);
+    setUsersLoaded(true);
+  };
+
+  // Load Orders only after users loaded
   useEffect(() => {
-    const load = async () => {
-      // load users
-      const snap = await getDocs(collection(db, "users"));
-      let userData = {};
-      snap.forEach((u) => (userData[u.id] = u.data()));
-      setUsers(userData);
-
-      // listen to orders
-      const unsub = onSnapshot(collection(db, "orders"), (snapshot) => {
-        const list = snapshot.docs.map((d) => {
-          const o = d.data();
-          const info = userData[o.userId] || {};
-
-          return {
-            id: d.id,
-            ...o,
-
-            // merge fields safely
-            userName: o.userName || info.name || "Unknown",
-            userMobile: o.userMobile || info.mobile || "N/A",
-            userAddress: o.userAddress || info.address || "Not Provided",
-          };
-        });
-
-        // sort by latest
-        list.sort(
-          (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
-        );
-
-        setOrders(list);
-      });
-
-      return unsub;
-    };
-
-    const unsubPromise = load();
-
-    return () => {
-      unsubPromise.then((fn) => fn && fn());
-    };
+    loadUsers();
   }, []);
 
-  // Remove duplicate orderId
-  const uniqueOrders = Array.from(
-    new Map(orders.map((o) => [o.orderId, o])).values()
-  );
+  useEffect(() => {
+    if (!usersLoaded) return;
 
-  // Search filter
+    const unsub = onSnapshot(collection(db, "orders"), (snapshot) => {
+      const list = snapshot.docs.map((d) => {
+        const data = d.data();
+        const user = users[data.userId] || {};
+
+        return {
+          id: d.id,
+          ...data,
+          userName: user.name || "Unknown",
+          userMobile: user.mobile || "N/A",
+          userAddress: user.address || "",
+        };
+      });
+
+      list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+      setOrders(list);
+    });
+
+    return () => unsub();
+  }, [usersLoaded, users]);
+
+  // UNIQUE Orders (avoid duplicate IDs)
+  const uniqueOrders = Array.from(new Map(orders.map((o) => [(o.orderId || o.id), o])).values());
+
+  // Search Filter
   const filteredOrders = uniqueOrders.filter((o) => {
     const k = search.toLowerCase();
     return (
       String(o.orderId).includes(k) ||
+      String(o.id).includes(k) ||
       o.userName.toLowerCase().includes(k) ||
       o.userMobile.toLowerCase().includes(k) ||
       (o.address || "").toLowerCase().includes(k) ||
@@ -84,17 +73,19 @@ export function AdminOrders() {
     );
   });
 
-  // update status
-  const updateStatus = async (id, newStatus) => {
-    await updateDoc(doc(db, "orders", id), { status: newStatus });
+  // Update Status
+  const updateStatus = async (id, value) => {
+    await updateDoc(doc(db, "orders", id), { status: value });
   };
 
-  // update Delivery Boy
-  const updateBoyName = async (id, v) => {
-    await updateDoc(doc(db, "orders", id), { boyName: v });
+  // Update Delivery Boy Name
+  const updateBoyName = async (id, value) => {
+    await updateDoc(doc(db, "orders", id), { boyName: value });
   };
-  const updateBoyPhone = async (id, v) => {
-    await updateDoc(doc(db, "orders", id), { boyPhone: v });
+
+  // Update Delivery Boy Phone
+  const updateBoyPhone = async (id, value) => {
+    await updateDoc(doc(db, "orders", id), { boyPhone: value });
   };
 
   return (
@@ -128,28 +119,21 @@ export function AdminOrders() {
           {filteredOrders.map((o, index) => (
             <tr key={o.id}>
               <td>{index + 1}</td>
-              <td>{o.orderId}</td>
+
+              {/* FIXED ORDER ID */}
+              <td>{o.orderId || o.id}</td>
 
               <td>{o.userName}</td>
               <td>{o.userMobile}</td>
 
-              <td>₹{o.total}</td>
+              <td>₹{o.total || 0}</td>
+
+              <td>{o.paymentMethod?.toUpperCase() || "N/A"}</td>
 
               <td>
-                <span className="payment-badge">
-                  {o.paymentMethod?.toUpperCase()}
-                </span>
-              </td>
-
-              <td>
-                <select
-                  value={o.status}
-                  onChange={(e) => updateStatus(o.id, e.target.value)}
-                >
+                <select value={o.status} onChange={(e) => updateStatus(o.id, e.target.value)}>
                   {statusOptions.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
+                    <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </td>
@@ -157,22 +141,19 @@ export function AdminOrders() {
               <td>
                 <ul>
                   {o.items?.map((i, idx) => (
-                    <li key={idx}>
-                      {i.name} × {i.qty}
-                    </li>
+                    <li key={idx}>{i.name} × {i.qty}</li>
                   ))}
                 </ul>
               </td>
 
-              <td style={{ maxWidth: 250 }}>
-                <b>Delivery Address:</b>
-                <p>{o.address || "Not Provided"}</p>
+              <td>
+                <b>Delivery Address:</b><br />
+                {o.address || "Not Provided"}<br />
 
-                <b>Customer Address:</b>
-                <p>{o.userAddress}</p>
+                <b>Customer Address:</b><br />
+                {o.userAddress || "Not Provided"}<br />
 
                 <input
-                  type="text"
                   className="delivery-input"
                   placeholder="Delivery Boy Name"
                   value={o.boyName || ""}
@@ -180,13 +161,15 @@ export function AdminOrders() {
                 />
 
                 <input
-                  type="tel"
                   className="delivery-input"
+                  style={{ marginTop: 6 }}
+                  type="tel"
                   placeholder="Phone"
                   value={o.boyPhone || ""}
                   onChange={(e) => updateBoyPhone(o.id, e.target.value)}
                 />
               </td>
+
             </tr>
           ))}
         </tbody>
