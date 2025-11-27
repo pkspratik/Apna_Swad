@@ -25,9 +25,7 @@ export function OrderTracking() {
   const [lastStatus, setLastStatus] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // ⭐ Order tracking is now PUBLIC - anyone with order ID can track
-  // This allows tracking on any device without login
-
+  // ⭐ Load order without login – public tracking
   const loadOrder = async () => {
     try {
       const orderRef = doc(db, "orders", String(orderId));
@@ -41,25 +39,22 @@ export function OrderTracking() {
 
       const data = snap.data();
 
-      // ⭐ No user validation - public tracking
-      // Order ID itself acts as the authentication token
       setOrder(data);
 
-      // Status sound
+      // Play sound when status changes
       if (data.status !== lastStatus) {
         setLastStatus(data.status);
         const audio = document.getElementById("statusSound");
         audio?.play().catch(() => { });
       }
 
-      // ETA
+      // ETA calculation
       if (data.createdAt?.toDate) {
         const start = data.createdAt.toDate().getTime();
         const now = Date.now();
         const diffMin = Math.floor((now - start) / (1000 * 60));
         setEtaMinutes(Math.max(45 - diffMin, 0));
       }
-
     } catch (err) {
       console.error("Order tracking error:", err);
       setOrder(null);
@@ -68,12 +63,21 @@ export function OrderTracking() {
     setLoading(false);
   };
 
+  // 🔁 Auto refresh every 4 seconds
   useEffect(() => {
     loadOrder();
     const interval = setInterval(loadOrder, 4000);
     return () => clearInterval(interval);
-  }, [orderId]); // Only depend on orderId, not user
+  }, [orderId]);
 
+  // ⭐ Auto Clear Cart When Delivered
+  useEffect(() => {
+    if (order?.status === "Delivered") {
+      clearCart(); // empty cart instantly
+    }
+  }, [order?.status]);
+
+  // UI Handling
   if (loading) {
     return <h3 style={{ textAlign: "center", marginTop: 40 }}>Loading order details...</h3>;
   }
@@ -121,10 +125,7 @@ export function OrderTracking() {
 
       {order.status === "Delivered" && (
         <button
-          onClick={() => {
-            clearCart();
-            navigate("/");
-          }}
+          onClick={() => navigate("/")}
           className="reorder-btn"
         >
           🔁 Re-Order

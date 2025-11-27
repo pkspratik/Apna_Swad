@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from "react";
 import "./AdminOrders.css";
-import { collection, onSnapshot, doc, updateDoc, getDocs } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  doc,
+  updateDoc,
+  getDocs,
+} from "firebase/firestore";
 import { db } from "../../firebase";
 
 const statusOptions = [
@@ -17,68 +23,56 @@ export function AdminOrders() {
   const [users, setUsers] = useState({});
   const [search, setSearch] = useState("");
 
-  // 🔥 Load Orders Real-Time
+  // 🔥 Load users + Orders
   useEffect(() => {
-    const loadData = async () => {
-      // First load users
+    const load = async () => {
+      // load users
       const snap = await getDocs(collection(db, "users"));
       let userData = {};
       snap.forEach((u) => (userData[u.id] = u.data()));
       setUsers(userData);
 
-      // Then subscribe to orders
+      // listen to orders
       const unsub = onSnapshot(collection(db, "orders"), (snapshot) => {
         const list = snapshot.docs.map((d) => {
-          const order = d.data();
-          const userInfo = userData[order.userId] || {};
+          const o = d.data();
+          const info = userData[o.userId] || {};
 
           return {
             id: d.id,
-            ...order,
+            ...o,
 
-            // ⭐ New fields merged into order
-            userName: userInfo.name || "Unknown",
-            userMobile: userInfo.mobile || "N/A",
-            userAddress: userInfo.address || "",
+            // merge fields safely
+            userName: o.userName || info.name || "Unknown",
+            userMobile: o.userMobile || info.mobile || "N/A",
+            userAddress: o.userAddress || info.address || "Not Provided",
           };
         });
 
-        // Sort latest first
-        list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        // sort by latest
+        list.sort(
+          (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+        );
+
         setOrders(list);
       });
 
       return unsub;
     };
 
-    const unsubscribe = loadData();
+    const unsubPromise = load();
+
     return () => {
-      unsubscribe.then((unsub) => unsub && unsub());
+      unsubPromise.then((fn) => fn && fn());
     };
-  }, []); // Empty dependency array - load once on mount
+  }, []);
 
-  // Remove duplicate orderIds
-  const uniqueOrders = Array.from(new Map(orders.map((o) => [o.orderId, o])).values());
+  // Remove duplicate orderId
+  const uniqueOrders = Array.from(
+    new Map(orders.map((o) => [o.orderId, o])).values()
+  );
 
-  // 🔥 Today's Summary
-  const today = new Date().toLocaleDateString();
-  const todayOrders = uniqueOrders.filter((o) => {
-    const date = o.createdAt?.seconds
-      ? new Date(o.createdAt.seconds * 1000).toLocaleDateString()
-      : "";
-    return date === today;
-  });
-
-  const totalToday = todayOrders.length;
-  const pendingToday = todayOrders.filter(
-    (o) => o.status !== "Delivered" && o.status !== "Cancelled"
-  ).length;
-  const deliveredToday = todayOrders.filter((o) => o.status === "Delivered").length;
-  const earningsToday = todayOrders
-    .filter((o) => o.status === "Delivered")
-    .reduce((sum, o) => sum + Number(o.total || 0), 0);
-
-  // 🔍 Search filter improvements
+  // Search filter
   const filteredOrders = uniqueOrders.filter((o) => {
     const k = search.toLowerCase();
     return (
@@ -86,40 +80,27 @@ export function AdminOrders() {
       o.userName.toLowerCase().includes(k) ||
       o.userMobile.toLowerCase().includes(k) ||
       (o.address || "").toLowerCase().includes(k) ||
-      (o.userAddress || "").toLowerCase().includes(k) ||
-      (o.paymentMethod || "").toLowerCase().includes(k) ||
-      o.items?.some((i) => i.name.toLowerCase().includes(k))
+      (o.userAddress || "").toLowerCase().includes(k)
     );
   });
 
-  // ⭐ Update Status
-  const updateStatus = async (orderID, newStatus) => {
-    await updateDoc(doc(db, "orders", orderID), { status: newStatus });
+  // update status
+  const updateStatus = async (id, newStatus) => {
+    await updateDoc(doc(db, "orders", id), { status: newStatus });
   };
 
-  // ⭐ Update Delivery Boy Name
-  const updateBoyName = async (orderID, value) => {
-    await updateDoc(doc(db, "orders", orderID), { boyName: value });
+  // update Delivery Boy
+  const updateBoyName = async (id, v) => {
+    await updateDoc(doc(db, "orders", id), { boyName: v });
   };
-
-  // ⭐ Update Delivery Boy Phone
-  const updateBoyPhone = async (orderID, value) => {
-    await updateDoc(doc(db, "orders", orderID), { boyPhone: value });
+  const updateBoyPhone = async (id, v) => {
+    await updateDoc(doc(db, "orders", id), { boyPhone: v });
   };
 
   return (
     <div className="admin-orders-container">
       <h2>Admin – Orders Dashboard</h2>
 
-      {/* 🔥 Today Summary */}
-      <div className="stats-container">
-        <div className="stat-box">Total Orders: {totalToday}</div>
-        <div className="stat-box">Pending: {pendingToday}</div>
-        <div className="stat-box">Delivered: {deliveredToday}</div>
-        <div className="stat-box">Earnings: ₹{earningsToday}</div>
-      </div>
-
-      {/* 🔍 Search box */}
       <input
         type="text"
         className="order-search"
@@ -147,38 +128,24 @@ export function AdminOrders() {
           {filteredOrders.map((o, index) => (
             <tr key={o.id}>
               <td>{index + 1}</td>
-
               <td>{o.orderId}</td>
 
-              {/* ⭐ Customer Name */}
               <td>{o.userName}</td>
-
-              {/* ⭐ Customer Mobile */}
               <td>{o.userMobile}</td>
 
               <td>₹{o.total}</td>
 
               <td>
-                <span
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: "6px",
-                    color: "white",
-                    background:
-                      o.paymentMethod === "cod"
-                        ? "#007bff"
-                        : o.paymentMethod === "upi"
-                          ? "green"
-                          : "gray",
-                  }}
-                >
+                <span className="payment-badge">
                   {o.paymentMethod?.toUpperCase()}
                 </span>
               </td>
 
-              {/* ⭐ Status Update Dropdown */}
               <td>
-                <select value={o.status} onChange={(e) => updateStatus(o.id, e.target.value)}>
+                <select
+                  value={o.status}
+                  onChange={(e) => updateStatus(o.id, e.target.value)}
+                >
                   {statusOptions.map((s) => (
                     <option key={s} value={s}>
                       {s}
@@ -187,9 +154,8 @@ export function AdminOrders() {
                 </select>
               </td>
 
-              {/* Items list */}
-              <td style={{ maxWidth: 180 }}>
-                <ul style={{ margin: 0 }}>
+              <td>
+                <ul>
                   {o.items?.map((i, idx) => (
                     <li key={idx}>
                       {i.name} × {i.qty}
@@ -198,29 +164,25 @@ export function AdminOrders() {
                 </ul>
               </td>
 
-              {/* ⭐ Delivery & Address */}
-              <td style={{ maxWidth: 240 }}>
-                <p style={{ whiteSpace: "pre-line", marginBottom: 6 }}>
-                  <b>Delivery Address:</b><br />
-                  {o.address || "Address not found"}
-                </p>
+              <td style={{ maxWidth: 250 }}>
+                <b>Delivery Address:</b>
+                <p>{o.address || "Not Provided"}</p>
 
                 <b>Customer Address:</b>
-                <p>{o.userAddress || "No registered address"}</p>
+                <p>{o.userAddress}</p>
 
                 <input
-                  className="delivery-input"
                   type="text"
+                  className="delivery-input"
                   placeholder="Delivery Boy Name"
                   value={o.boyName || ""}
                   onChange={(e) => updateBoyName(o.id, e.target.value)}
                 />
 
                 <input
-                  className="delivery-input"
                   type="tel"
+                  className="delivery-input"
                   placeholder="Phone"
-                  style={{ marginTop: 6 }}
                   value={o.boyPhone || ""}
                   onChange={(e) => updateBoyPhone(o.id, e.target.value)}
                 />
