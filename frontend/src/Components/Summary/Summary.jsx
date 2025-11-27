@@ -20,6 +20,9 @@ export function Summary() {
   const restaurantLat = 26.033197;
   const restaurantLng = 84.835471;
 
+  // ---------------------------------------------------------
+  // 🔍 Distance Calculation Helpers
+  // ---------------------------------------------------------
   const toRad = (value) => (value * Math.PI) / 180;
 
   const getDistance = (lat1, lon1, lat2, lon2) => {
@@ -39,7 +42,9 @@ export function Summary() {
     return `${distance.toFixed(2)} KM`;
   };
 
-  // ⭐ Get GPS + Address
+  // ---------------------------------------------------------
+  // 📍 GET USER LOCATION (GPS + Reverse API)
+  // ---------------------------------------------------------
   const handleGetLocation = () => {
     if (!user) {
       alert("Please login first");
@@ -58,8 +63,11 @@ export function Summary() {
         setUserDistance(distance);
 
         setDeliveryAvailable(true);
+
+        // Update user temp data in context
         setUser({ ...user, lat, lng });
 
+        // Reverse Geocoding
         fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
         )
@@ -71,13 +79,16 @@ export function Summary() {
         setChecking(false);
       },
       () => {
-        alert("Please enable GPS permission");
+        alert("Turn on GPS to detect your location");
         setChecking(false);
       },
       { enableHighAccuracy: true }
     );
   };
 
+  // ---------------------------------------------------------
+  // 💰 PRICE CALCULATIONS
+  // ---------------------------------------------------------
   const totalAmount = cart.reduce(
     (sum, item) => sum + Number(item.price.replace("₹", "")) * item.qty,
     0
@@ -86,28 +97,22 @@ export function Summary() {
   const deliveryCharge = totalAmount >= 499 ? 0 : 40;
   const grandTotal = totalAmount + deliveryCharge;
 
-  // ⭐ NO ORDER CREATION HERE ANYMORE
+  // ---------------------------------------------------------
+  // ⭐ PAYMENT → NO ORDER ID GENERATION HERE (VERY IMPORTANT)
+  // ---------------------------------------------------------
   const handlePayment = () => {
     if (!user) {
-      alert("Please login to continue");
+      alert("Please login first");
       navigate("/login?redirect=summary");
       return;
     }
 
     if (!userAddress) {
-      alert("Click the location button before payment");
+      alert("Click location button to fetch your address");
       return;
     }
 
-    // ⭐ Generate unique order ID with user-specific component
-    // Format: timestamp + last 6 chars of userId + random 3 digits
-    // This prevents conflicts when multiple users order at the exact same time
-    const timestamp = Date.now();
-    const userSuffix = user.uid ? user.uid.slice(-6) : "000000";
-    const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
-    const orderId = `${timestamp}${userSuffix}${randomSuffix}`;
-
-    localStorage.setItem("apnaSwad_current_order", orderId);
+    // Save delivery info for Payment.jsx
     localStorage.setItem(
       "apnaSwad_delivery_info",
       JSON.stringify({
@@ -118,13 +123,14 @@ export function Summary() {
       })
     );
 
-    navigate("/payment?orderId=" + orderId);
+    navigate("/payment");
   };
 
   return (
     <div className="summary-container">
       <NevBar BrandTitle="Apna Swad" MenuItems={["Home", "Category"]} />
 
+      {/* Address Section */}
       <div className="address-section">
         <h3>Delivery Location</h3>
         <button
@@ -138,13 +144,14 @@ export function Summary() {
         {deliveryAvailable && (
           <p style={{ color: "green", marginTop: 10 }}>
             ✔ Delivery available<br />
-            📍 Distance: {formatDistance(userDistance)}<br />
+            📍 Distance: {formatDistance(userDistance)}<br /><br />
             📌 <b>Your address:</b><br />
             {userAddress}
           </p>
         )}
       </div>
 
+      {/* Cart Items Section */}
       <div className="items-section">
         <h3>Order Summary</h3>
         {cart.map((item, index) => (
@@ -160,8 +167,10 @@ export function Summary() {
         ))}
       </div>
 
+      {/* Price Section */}
       <div className="price-section">
         <h3>Price Details</h3>
+
         <div className="price-row">
           <p>Subtotal</p>
           <p>₹{totalAmount}</p>

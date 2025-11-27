@@ -3,8 +3,8 @@ import "./Payment.css";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext/AuthContext";
-import { setDoc, doc, serverTimestamp } from "firebase/firestore";
-import { db, auth } from "../../firebase";   // 👈 import auth too
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db, auth } from "../../firebase";
 
 export function Payment() {
   const { cart } = useCart();
@@ -17,13 +17,19 @@ export function Payment() {
   const UPI_ID = "pratikk512@ybl";
   const UPI_NAME = "Pratik Singh";
 
-  // ⭐ ENFORCE LOGIN - Redirect if not logged in
+  // ⭐ Redirect if not logged in
   useEffect(() => {
     if (!user) {
-      alert("Please login to complete payment");
+      alert("Please login first");
       navigate("/login?redirect=payment");
     }
   }, [user, navigate]);
+
+  // ⭐ Load address from localStorage
+  useEffect(() => {
+    const info = localStorage.getItem("apnaSwad_delivery_info");
+    if (info) setDeliveryInfo(JSON.parse(info));
+  }, []);
 
   const subtotal = cart.reduce(
     (sum, item) => sum + Number(item.price.replace("₹", "")) * item.qty,
@@ -31,11 +37,6 @@ export function Payment() {
   );
   const deliveryCharge = subtotal >= 499 ? 0 : 40;
   const totalPrice = subtotal + deliveryCharge;
-
-  useEffect(() => {
-    const info = localStorage.getItem("apnaSwad_delivery_info");
-    if (info) setDeliveryInfo(JSON.parse(info));
-  }, []);
 
   const upiLink = `upi://pay?pa=${encodeURIComponent(
     UPI_ID
@@ -45,26 +46,19 @@ export function Payment() {
     "Apna Swad Food Order"
   )}`;
 
-  const getCurrentOrderId = () => localStorage.getItem("apnaSwad_current_order");
-
   const getCartBackup = () =>
     cart.length > 0 ? cart : JSON.parse(localStorage.getItem("cartItems") || "[]");
 
-  // ⭐ Save order to Firebase (includes userId — important)
-  const saveOrderToFirebase = async (orderId, mode, addressText) => {
+  // ⭐ SAVE ORDER USING AUTO DOC ID (IMPORTANT FIX)
+  const saveOrderToFirebase = async (mode, addressText) => {
     const cartBackup = getCartBackup();
-    if (!cartBackup || cartBackup.length === 0) {
-      throw new Error("Cart is empty – cannot save order.");
-    }
-
     const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error("User not logged in.");
 
-    const orderRef = doc(db, "orders", String(orderId));
+    if (!currentUser) throw new Error("User not logged in!");
+    if (cartBackup.length === 0) throw new Error("Cart empty!");
 
     const orderDetails = {
-      orderId: Number(orderId),
-      userId: currentUser.uid,  // ⭐ REQUIRED for Firestore security rules
+      userId: currentUser.uid,
       items: cartBackup,
       total: totalPrice,
       address: addressText,
@@ -73,79 +67,57 @@ export function Payment() {
       createdAt: serverTimestamp(),
       boyName: "",
       boyPhone: "",
+      orderId: Date.now(), // visible to user
     };
 
-    await setDoc(orderRef, orderDetails);
+    const docRef = await addDoc(collection(db, "orders"), orderDetails);
+
+    return { ...orderDetails, docId: docRef.id };
   };
 
   // ---------------- COD ----------------
   const handleCODOrder = async () => {
-    const orderId = getCurrentOrderId();
-    if (!orderId) return navigate("/summary");
+    if (!deliveryInfo?.fullAddress)
+      return alert("Delivery address missing!");
 
-    const addressText = deliveryInfo?.fullAddress
-      ? `${deliveryInfo.fullAddress} — Phone: ${deliveryInfo.phone || ""}`
-      : "Address Not Available";
+    const addressText = `${deliveryInfo.fullAddress} — Phone: ${deliveryInfo.phone}`;
 
     try {
-      await saveOrderToFirebase(orderId, "cod", addressText);
+      const saved = await saveOrderToFirebase("cod", addressText);
 
-      localStorage.setItem("apnaSwad_last_order", orderId);
-      localStorage.removeItem("apnaSwad_current_order");
-      localStorage.removeItem("cartItems");
+      // store for fallback
+      localStorage.setItem("apnaSwad_last_order_doc", saved.docId);
 
-      setTimeout(() => {
-        navigate("/order-success", {
-          state: {
-            orderId,
-            cartItems: getCartBackup(),
-            totalPrice,
-            address: addressText,
-            paymentMethod: "cod",
-          },
-        });
-      }, 10);
+      navigate("/order-success", {
+        state: saved,
+      });
     } catch (err) {
-      console.error("COD order error:", err);
-      alert("Unable to place order (COD): " + err.message);
+      alert("COD error: " + err.message);
     }
   };
 
   // ---------------- UPI ----------------
   const handleUPIPaid = async () => {
-    const orderId = getCurrentOrderId();
-    if (!orderId) return navigate("/summary");
+    if (!deliveryInfo?.fullAddress)
+      return alert("Delivery address missing!");
 
-    const addressText = deliveryInfo?.fullAddress
-      ? `${deliveryInfo.fullAddress} — Phone: ${deliveryInfo.phone || ""}`
-      : "Address Not Available";
+    const addressText = `${deliveryInfo.fullAddress} — Phone: ${deliveryInfo.phone}`;
 
     try {
-      await saveOrderToFirebase(orderId, "upi", addressText);
+      const saved = await saveOrderToFirebase("upi", addressText);
 
-      localStorage.setItem("apnaSwad_last_order", orderId);
-      localStorage.removeItem("apnaSwad_current_order");
-      localStorage.removeItem("cartItems");
+      localStorage.setItem("apnaSwad_last_order_doc", saved.docId);
 
-      setTimeout(() => {
-        navigate("/order-success", {
-          state: {
-            orderId,
-            cartItems: getCartBackup(),
-            totalPrice,
-            address: addressText,
-            paymentMethod: "upi",
-          },
-        });
-      }, 10);
+      navigate("/order-success", {
+        state: saved,
+      });
     } catch (err) {
-      console.error("UPI order error:", err);
-      alert("Unable to place order (UPI): " + err.message);
+      alert("UPI error: " + err.message);
     }
   };
 
   const handleOrderConfirm = () => {
-    if (!paymentMethod) return alert("Please select a payment option");
+    if (!paymentMethod) return alert("Select a payment method");
     if (paymentMethod === "cod") handleCODOrder();
   };
 
@@ -168,12 +140,13 @@ export function Payment() {
         onClick={() => setPaymentMethod("upi")}
       >
         <input type="radio" checked={paymentMethod === "upi"} readOnly />
-        <label>📱 Online Payment / UPI (GPay, PhonePe, Paytm)</label>
+        <label>📱 UPI Payment (GPay, PhonePe, Paytm)</label>
       </div>
 
       {paymentMethod === "upi" && (
         <div className="upi-box">
-          <h3>Pay using UPI</h3>
+          <h3>Scan & Pay</h3>
+
           <img
             className="upi-qr"
             src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
@@ -181,11 +154,13 @@ export function Payment() {
             )}`}
             alt="UPI QR"
           />
+
           <button className="upi-pay-btn" onClick={() => (window.location.href = upiLink)}>
-            Open in UPI App
+            Open UPI App
           </button>
+
           <button className="upi-confirm-btn" onClick={handleUPIPaid}>
-            ✅ I have completed the payment
+            ✅ I have paid
           </button>
         </div>
       )}
@@ -200,7 +175,7 @@ export function Payment() {
         disabled={!paymentMethod || paymentMethod === "upi"}
         onClick={handleOrderConfirm}
       >
-        {paymentMethod === "cod" ? "Place Order (COD)" : "Select COD to continue"}
+        {paymentMethod === "cod" ? "Place Order (COD)" : "Select COD to place order"}
       </button>
     </div>
   );

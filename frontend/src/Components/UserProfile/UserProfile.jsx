@@ -1,63 +1,80 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { db } from "../../firebase";
 import { NevBar } from "../Heder_Nev/NevBar";
 import { Footer } from "../Footer/Footer";
 import "./UserProfile.css";
+import { useCart } from "../../context/CartContext";
 
 export function UserProfile() {
   const { user, logout } = useAuth();
+  const { addToCart, clearCart } = useCart();
   const navigate = useNavigate();
+
   const [userProfile, setUserProfile] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("profile"); // profile or orders
+  const [activeTab, setActiveTab] = useState("profile");
 
-  // Fetch user profile data
+  // ⭐ Fetch user profile safely
   useEffect(() => {
     if (!user) {
       navigate("/login");
       return;
     }
 
-    const fetchUserProfile = async () => {
+    const fetchProfile = async () => {
       try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          setUserProfile(userDoc.data());
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (snap.exists()) {
+          setUserProfile(snap.data());
         }
-      } catch (error) {
-        console.error("Error fetching user profile:", error);
+      } catch (err) {
+        console.error("User profile error:", err);
       }
     };
 
-    fetchUserProfile();
-  }, [user, navigate]);
+    fetchProfile();
+  }, [user]);
 
-  // Fetch user orders in real-time
+  // ⭐ Fetch Orders (FULLY FIXED for Safari)
   useEffect(() => {
     if (!user) return;
 
     const q = query(collection(db, "orders"), where("userId", "==", user.uid));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ordersList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
 
-      // Sort by creation date (newest first)
-      ordersList.sort((a, b) => {
-        const timeA = a.createdAt?.seconds || 0;
-        const timeB = b.createdAt?.seconds || 0;
-        return timeB - timeA;
-      });
+        // Sort latest first (fallback safe)
+        list.sort((a, b) => {
+          const A = a.createdAt?.seconds || 0;
+          const B = b.createdAt?.seconds || 0;
+          return B - A;
+        });
 
-      setOrders(ordersList);
-      setLoading(false);
-    });
+        setOrders(list);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Order fetch error:", err);
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, [user]);
@@ -67,8 +84,8 @@ export function UserProfile() {
     navigate("/login");
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
+  const getStatusColor = (s) => {
+    switch (s) {
       case "Delivered":
         return "#00b341";
       case "Cancelled":
@@ -85,13 +102,12 @@ export function UserProfile() {
   };
 
   const reorder = (items) => {
-    // Navigate to products page with items
-    navigate("/product");
+    clearCart();
+    items.forEach((item) => addToCart(item));
+    navigate("/cart");
   };
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <div>
@@ -102,16 +118,18 @@ export function UserProfile() {
           <div className="profile-avatar">
             {userProfile?.name?.charAt(0).toUpperCase() || "U"}
           </div>
+
           <div className="profile-info">
-            <h2>{userProfile?.name || "User"}</h2>
+            <h2>{userProfile?.name}</h2>
             <p>{userProfile?.email || user.email}</p>
           </div>
+
           <button className="logout-btn" onClick={handleLogout}>
             Logout
           </button>
         </div>
 
-        {/* Tab Navigation */}
+        {/* ===================== TABS ======================== */}
         <div className="profile-tabs">
           <button
             className={`tab-btn ${activeTab === "profile" ? "active" : ""}`}
@@ -119,6 +137,7 @@ export function UserProfile() {
           >
             👤 Profile Details
           </button>
+
           <button
             className={`tab-btn ${activeTab === "orders" ? "active" : ""}`}
             onClick={() => setActiveTab("orders")}
@@ -127,38 +146,43 @@ export function UserProfile() {
           </button>
         </div>
 
-        {/* Profile Details Tab */}
+        {/* ===================== PROFILE TAB ======================== */}
         {activeTab === "profile" && (
           <div className="profile-details-section">
             <div className="detail-card">
               <h3>Personal Information</h3>
+
               <div className="detail-row">
                 <span className="detail-label">Full Name:</span>
-                <span className="detail-value">{userProfile?.name || "N/A"}</span>
+                <span className="detail-value">{userProfile?.name}</span>
               </div>
+
               <div className="detail-row">
                 <span className="detail-label">Email:</span>
-                <span className="detail-value">{userProfile?.email || "N/A"}</span>
+                <span className="detail-value">{userProfile?.email}</span>
               </div>
+
               <div className="detail-row">
                 <span className="detail-label">Mobile:</span>
-                <span className="detail-value">{userProfile?.mobile || "N/A"}</span>
+                <span className="detail-value">{userProfile?.mobile}</span>
               </div>
+
               <div className="detail-row">
                 <span className="detail-label">Address:</span>
-                <span className="detail-value">{userProfile?.address || "N/A"}</span>
+                <span className="detail-value">{userProfile?.address}</span>
               </div>
+
               <div className="detail-row">
                 <span className="detail-label">Account Type:</span>
                 <span className="detail-value">
-                  {userProfile?.role === "buyer" ? "Customer" : userProfile?.role || "N/A"}
+                  {userProfile?.role === "buyer" ? "Customer" : userProfile?.role}
                 </span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Order History Tab */}
+        {/* ===================== ORDERS TAB ======================== */}
         {activeTab === "orders" && (
           <div className="order-history-section">
             <h3>Your Order History</h3>
@@ -168,7 +192,7 @@ export function UserProfile() {
             ) : orders.length === 0 ? (
               <div className="no-orders">
                 <p>📭 No orders yet</p>
-                <button className="browse-btn" onClick={() => navigate("/product")}>
+                <button className="browse-btn" onClick={() => navigate("/")}>
                   Browse Menu
                 </button>
               </div>
@@ -179,12 +203,14 @@ export function UserProfile() {
                     <div className="order-header">
                       <div>
                         <p className="order-id">Order #{order.orderId}</p>
+
                         <p className="order-date">
-                          {order.createdAt
+                          {order.createdAt?.seconds
                             ? new Date(order.createdAt.seconds * 1000).toLocaleString()
-                            : "N/A"}
+                            : "—"}
                         </p>
                       </div>
+
                       <div
                         className="order-status-badge"
                         style={{ background: getStatusColor(order.status) }}
@@ -194,7 +220,7 @@ export function UserProfile() {
                     </div>
 
                     <div className="order-items">
-                      <p className="items-label">Items:</p>
+                      <strong>Items:</strong>
                       <ul>
                         {order.items?.map((item, idx) => (
                           <li key={idx}>
@@ -209,32 +235,36 @@ export function UserProfile() {
                         <span>Total:</span>
                         <span className="total-amount">₹{order.total}</span>
                       </div>
-                      <div className="order-payment">
-                        <span
-                          className="payment-badge"
-                          style={{
-                            background: order.paymentMethod === "upi" ? "#00b341" : "#007bff",
-                          }}
-                        >
-                          {order.paymentMethod?.toUpperCase()}
-                        </span>
-                      </div>
+
+                      <span
+                        className="payment-badge"
+                        style={{
+                          background:
+                            order.paymentMethod?.toLowerCase() === "upi"
+                              ? "#00b341"
+                              : "#007bff",
+                        }}
+                      >
+                        {order.paymentMethod?.toUpperCase()}
+                      </span>
                     </div>
 
-                    {order.address && (
-                      <div className="order-address">
-                        <strong>Delivery Address:</strong> {order.address}
-                      </div>
-                    )}
+                    <div className="order-address">
+                      <strong>Address:</strong> {order.address || "—"}
+                    </div>
 
                     <div className="order-actions">
                       <button
                         className="track-order-btn"
-                        onClick={() => navigate(`/order-tracking/${order.orderId}`)}
+                        onClick={() => navigate(`/order-tracking/${order.id}`)} // ⭐ fixed
                       >
                         🔍 Track Order
                       </button>
-                      <button className="reorder-btn" onClick={() => reorder(order.items)}>
+
+                      <button
+                        className="reorder-btn"
+                        onClick={() => reorder(order.items)}
+                      >
                         🔁 Reorder
                       </button>
                     </div>

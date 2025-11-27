@@ -16,74 +16,87 @@ export function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState({});
   const [search, setSearch] = useState("");
-  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Load USERS first
+  // 🔥 Load USERS first (Safari important!)
   const loadUsers = async () => {
     const snap = await getDocs(collection(db, "users"));
     let map = {};
-    snap.forEach((u) => (map[u.id] = u.data()));
+    snap.forEach((d) => (map[d.id] = d.data()));
     setUsers(map);
-    setUsersLoaded(true);
+    return map;
   };
 
-  // Load Orders only after users loaded
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  // 🔥 Real-time Orders Listener
+  const loadOrders = (userMap) => {
+    return onSnapshot(collection(db, "orders"), (snapshot) => {
 
-  useEffect(() => {
-    if (!usersLoaded) return;
-
-    const unsub = onSnapshot(collection(db, "orders"), (snapshot) => {
       const list = snapshot.docs.map((d) => {
-        const data = d.data();
-        const user = users[data.userId] || {};
+        const order = d.data();
+        const userInfo = userMap[order.userId] || {};
 
         return {
           id: d.id,
-          ...data,
-          userName: user.name || "Unknown",
-          userMobile: user.mobile || "N/A",
-          userAddress: user.address || "",
+          ...order,
+          userName: userInfo.name || "Unknown",
+          userMobile: userInfo.mobile || "N/A",
+          userAddress: userInfo.address || "Not Provided",
         };
       });
 
+      // Sort newest first
       list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
       setOrders(list);
+      setLoading(false);
     });
+  };
 
-    return () => unsub();
-  }, [usersLoaded, users]);
+  // 🔥 Main Loader
+  useEffect(() => {
+    let unsubscribe = null;
 
-  // UNIQUE Orders (avoid duplicate IDs)
-  const uniqueOrders = Array.from(new Map(orders.map((o) => [(o.orderId || o.id), o])).values());
+    const init = async () => {
+      const userMap = await loadUsers();
+      unsubscribe = loadOrders(userMap);
+    };
 
-  // Search Filter
-  const filteredOrders = uniqueOrders.filter((o) => {
+    init();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  if (loading) {
+    return <h3 style={{ textAlign: "center", marginTop: 40 }}>Loading Orders...</h3>;
+  }
+
+  // 🔍 Search filter
+  const filteredOrders = orders.filter((o) => {
     const k = search.toLowerCase();
     return (
       String(o.orderId).includes(k) ||
-      String(o.id).includes(k) ||
       o.userName.toLowerCase().includes(k) ||
       o.userMobile.toLowerCase().includes(k) ||
       (o.address || "").toLowerCase().includes(k) ||
-      (o.userAddress || "").toLowerCase().includes(k)
+      (o.userAddress || "").toLowerCase().includes(k) ||
+      (o.paymentMethod || "").toLowerCase().includes(k) ||
+      o.items?.some((i) => i.name.toLowerCase().includes(k))
     );
   });
 
-  // Update Status
+  // 🔥 Update Status
   const updateStatus = async (id, value) => {
     await updateDoc(doc(db, "orders", id), { status: value });
   };
 
-  // Update Delivery Boy Name
+  // 🔥 Update Delivery Boy Name
   const updateBoyName = async (id, value) => {
     await updateDoc(doc(db, "orders", id), { boyName: value });
   };
 
-  // Update Delivery Boy Phone
+  // 🔥 Update Delivery Boy Phone
   const updateBoyPhone = async (id, value) => {
     await updateDoc(doc(db, "orders", id), { boyPhone: value });
   };
@@ -119,42 +132,65 @@ export function AdminOrders() {
           {filteredOrders.map((o, index) => (
             <tr key={o.id}>
               <td>{index + 1}</td>
-
-              {/* FIXED ORDER ID */}
-              <td>{o.orderId || o.id}</td>
-
+              <td>{o.orderId}</td>
               <td>{o.userName}</td>
               <td>{o.userMobile}</td>
+              <td>₹{o.total}</td>
 
-              <td>₹{o.total || 0}</td>
-
-              <td>{o.paymentMethod?.toUpperCase() || "N/A"}</td>
-
+              {/* Payment Color Fix */}
               <td>
-                <select value={o.status} onChange={(e) => updateStatus(o.id, e.target.value)}>
+                <span
+                  style={{
+                    padding: "5px 8px",
+                    borderRadius: "6px",
+                    color: "#fff",
+                    background:
+                      o.paymentMethod?.toLowerCase() === "cod"
+                        ? "#007bff"
+                        : "green",
+                  }}
+                >
+                  {o.paymentMethod?.toUpperCase()}
+                </span>
+              </td>
+
+              {/* Status */}
+              <td>
+                <select
+                  value={o.status}
+                  onChange={(e) => updateStatus(o.id, e.target.value)}
+                >
                   {statusOptions.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
                   ))}
                 </select>
               </td>
 
+              {/* Items */}
               <td>
                 <ul>
                   {o.items?.map((i, idx) => (
-                    <li key={idx}>{i.name} × {i.qty}</li>
+                    <li key={idx}>
+                      {i.name} × {i.qty}
+                    </li>
                   ))}
                 </ul>
               </td>
 
+              {/* Delivery Info */}
               <td>
-                <b>Delivery Address:</b><br />
-                {o.address || "Not Provided"}<br />
+                <b>Delivery Address:</b> <br />
+                {o.address || "Not Provided"} <br />
+                <br />
 
-                <b>Customer Address:</b><br />
-                {o.userAddress || "Not Provided"}<br />
+                <b>Customer Address:</b>
+                <p>{o.userAddress}</p>
 
                 <input
                   className="delivery-input"
+                  type="text"
                   placeholder="Delivery Boy Name"
                   value={o.boyName || ""}
                   onChange={(e) => updateBoyName(o.id, e.target.value)}
@@ -162,14 +198,13 @@ export function AdminOrders() {
 
                 <input
                   className="delivery-input"
-                  style={{ marginTop: 6 }}
                   type="tel"
+                  style={{ marginTop: 6 }}
                   placeholder="Phone"
                   value={o.boyPhone || ""}
                   onChange={(e) => updateBoyPhone(o.id, e.target.value)}
                 />
               </td>
-
             </tr>
           ))}
         </tbody>

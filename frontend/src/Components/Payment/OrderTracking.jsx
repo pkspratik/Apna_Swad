@@ -2,9 +2,8 @@ import React, { useEffect, useState } from "react";
 import "./OrderTracking.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
-import { useAuth } from "../../context/AuthContext/AuthContext";
 import { db } from "../../firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, query, collection, where, getDocs } from "firebase/firestore";
 
 const steps = [
   "Order Placed",
@@ -18,18 +17,44 @@ export function OrderTracking() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { clearCart } = useCart();
-  const { user } = useAuth();
 
   const [order, setOrder] = useState(null);
+  const [docId, setDocId] = useState(null);
   const [etaMinutes, setEtaMinutes] = useState(null);
   const [lastStatus, setLastStatus] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // ⭐ Load order without login – public tracking
+  // 🔥 Fix: Find correct Firestore document by order.orderId
+  const findOrderDoc = async () => {
+    const q = query(collection(db, "orders"), where("orderId", "==", orderId));
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      setDocId(d.id);
+      return d.id;
+    }
+
+    return null;
+  };
+
+  // Load order details
   const loadOrder = async () => {
     try {
-      const orderRef = doc(db, "orders", String(orderId));
-      const snap = await getDoc(orderRef);
+      let id = docId;
+
+      // If docId is unknown, find it first
+      if (!id) {
+        id = await findOrderDoc();
+        if (!id) {
+          setOrder(null);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const ref = doc(db, "orders", id);
+      const snap = await getDoc(ref);
 
       if (!snap.exists()) {
         setOrder(null);
@@ -38,46 +63,44 @@ export function OrderTracking() {
       }
 
       const data = snap.data();
-
       setOrder(data);
 
-      // Play sound when status changes
+      // Play sound on status change
       if (data.status !== lastStatus) {
         setLastStatus(data.status);
-        const audio = document.getElementById("statusSound");
-        audio?.play().catch(() => { });
+        document.getElementById("statusSound")?.play().catch(() => { });
       }
 
       // ETA calculation
       if (data.createdAt?.toDate) {
         const start = data.createdAt.toDate().getTime();
         const now = Date.now();
-        const diffMin = Math.floor((now - start) / (1000 * 60));
+        const diffMin = Math.floor((now - start) / 60000);
         setEtaMinutes(Math.max(45 - diffMin, 0));
       }
     } catch (err) {
-      console.error("Order tracking error:", err);
+      console.error("Tracking error:", err);
       setOrder(null);
     }
 
     setLoading(false);
   };
 
-  // 🔁 Auto refresh every 4 seconds
+  // Auto reload every 4 seconds
   useEffect(() => {
     loadOrder();
     const interval = setInterval(loadOrder, 4000);
     return () => clearInterval(interval);
-  }, [orderId]);
+  }, [orderId, docId]);
 
-  // ⭐ Auto Clear Cart When Delivered
+  // Clear cart when delivered
   useEffect(() => {
     if (order?.status === "Delivered") {
-      clearCart(); // empty cart instantly
+      clearCart();
     }
   }, [order?.status]);
 
-  // UI Handling
+  // UI
   if (loading) {
     return <h3 style={{ textAlign: "center", marginTop: 40 }}>Loading order details...</h3>;
   }
@@ -124,10 +147,7 @@ export function OrderTracking() {
       </div>
 
       {order.status === "Delivered" && (
-        <button
-          onClick={() => navigate("/")}
-          className="reorder-btn"
-        >
+        <button onClick={() => navigate("/")} className="reorder-btn">
           🔁 Re-Order
         </button>
       )}

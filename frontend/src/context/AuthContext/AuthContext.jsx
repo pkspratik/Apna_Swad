@@ -18,40 +18,55 @@ export const AuthProvider = ({ children }) => {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Auto detect login/logout
+  // -----------------------
+  // AUTO LOGIN STATE CHECK
+  // -----------------------
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
-        console.log("🔥 Firebase Auth State:", firebaseUser);
-
-        if (firebaseUser) {
-          const userRef = doc(db, "users", firebaseUser.uid);
-          const snap = await getDoc(userRef);
-
-          let userRole = "customer";
-
-          if (snap.exists()) {
-            userRole = snap.data().role;
-            console.log("📌 User role from Firestore:", userRole);
-          } else {
-            if (firebaseUser.email === ADMIN_EMAIL) userRole = "admin";
-
-            await setDoc(
-              userRef,
-              { email: firebaseUser.email, role: userRole },
-              { merge: true }
-            );
-          }
-
-          setUser(firebaseUser);
-          setRole(userRole);
-        } else {
-          console.log("⚠ No user logged in");
+        if (!firebaseUser) {
           setUser(null);
           setRole(null);
+          setLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error("🔥 Auth State Error:", error);
+
+        console.log("🔥 Auth User:", firebaseUser.email);
+
+        const userRef = doc(db, "users", firebaseUser.uid);
+        const snap = await getDoc(userRef);
+
+        let userRole = "customer";
+
+        // If user exists, load data
+        if (snap.exists()) {
+          const data = snap.data();
+          userRole = data.role || "customer";
+        } else {
+          // -------------------------
+          // FIRST LOGIN → CREATE USER
+          // -------------------------
+          userRole = firebaseUser.email === ADMIN_EMAIL ? "admin" : "customer";
+
+          await setDoc(
+            userRef,
+            {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              role: userRole,
+              name: "",
+              mobile: "",
+              address: "",
+              createdAt: new Date(),
+            },
+            { merge: true }
+          );
+        }
+
+        setUser(firebaseUser);
+        setRole(userRole);
+      } catch (err) {
+        console.error("🔥 Auth State Error:", err);
       }
 
       setLoading(false);
@@ -60,49 +75,48 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // ===================================
-  // 🔐 LOGIN FUNCTION (with full logs)
-  // ===================================
+  // -----------------------
+  // LOGIN FUNCTION
+  // -----------------------
   const login = async (email, password) => {
     try {
-      console.log("🟦 Login Attempt ------------------------");
-      console.log("Typed Email:", email);
-      console.log("Typed Password:", password);
-      console.log("Admin Email from Config:", ADMIN_EMAIL);
-      console.log("Admin Password from Config:", ADMIN_PASSWORD);
+      console.log("🟦 Login Attempt:", email);
 
-      // ===================================
-      // ⭐ FIXED ADMIN LOGIN CHECK
-      // ===================================
-      // ===================================
-      // ⭐ FIXED ADMIN LOGIN CHECK
-      // ===================================
-      // if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      //   console.log("🎉 ADMIN LOGIN SUCCESS (Bypassed Firebase)");
-      //   // ... bypass removed to ensure Firestore access ...
-      // }
-
-      console.log("🟠 Attempting Firebase Customer Login...");
-
-      // ===================================
-      // 🔐 CUSTOMER LOGIN (Firebase Auth)
-      // ===================================
+      // AUTHENTICATE
       const res = await signInWithEmailAndPassword(auth, email, password);
       const currentUser = res.user;
-
-      console.log("🟢 FIREBASE LOGIN SUCCESS:", currentUser.email);
 
       let userRole =
         currentUser.email === ADMIN_EMAIL ? "admin" : "customer";
 
-      await setDoc(
-        doc(db, "users", currentUser.uid),
-        {
-          email: currentUser.email,
-          role: userRole,
-        },
-        { merge: true }
-      );
+      const userRef = doc(db, "users", currentUser.uid);
+      const snap = await getDoc(userRef);
+
+      // -----------------------
+      // CREATE USER IF MISSING
+      // -----------------------
+      if (!snap.exists()) {
+        await setDoc(
+          userRef,
+          {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            role: userRole,
+            name: "",
+            mobile: "",
+            address: "",
+            createdAt: new Date(),
+          },
+          { merge: true }
+        );
+      } else {
+        // Update role if needed
+        await setDoc(
+          userRef,
+          { role: userRole },
+          { merge: true }
+        );
+      }
 
       setUser(currentUser);
       setRole(userRole);
@@ -110,14 +124,15 @@ export const AuthProvider = ({ children }) => {
       return userRole;
     } catch (error) {
       console.error("❌ Login Error:", error);
-      throw error; // Return error to Login.jsx
+      throw error;
     }
   };
 
-  // Logout
+  // -----------------------
+  // LOGOUT
+  // -----------------------
   const logout = async () => {
     await signOut(auth);
-    console.log("🚪 User Logged Out");
     setUser(null);
     setRole(null);
   };

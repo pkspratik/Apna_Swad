@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./OrderSuccess.css";
 import { db } from "../../firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 
 export function OrderSuccess() {
   const location = useLocation();
@@ -10,31 +10,33 @@ export function OrderSuccess() {
 
   const [orderData, setOrderData] = useState(null);
 
-  // Get data from navigation state (if coming from Payment)
+  // Data passed from Payment.jsx (recommended path)
   const navState = location.state;
 
-  // If order page refreshed → load data from Firebase
+  // Load order if page refreshed or opened later
   useEffect(() => {
     const loadOrder = async () => {
-      if (navState?.orderId) {
+      // If Payment.jsx passed all details → use it
+      if (navState?.docId) {
         setOrderData(navState);
         return;
       }
 
-      // Try fallback using last saved order ID
-      const lastOrder = localStorage.getItem("apnaSwad_last_order");
-      if (!lastOrder) return;
+      // Fallback (page refresh)
+      const savedDocId = localStorage.getItem("apnaSwad_last_order_doc");
 
-      const q = query(collection(db, "orders"), where("orderId", "==", Number(lastOrder)));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        setOrderData(snap.docs[0].data());
+      if (!savedDocId) return;
+
+      const snap = await getDoc(doc(db, "orders", savedDocId));
+
+      if (snap.exists()) {
+        setOrderData({ docId: savedDocId, ...snap.data() });
       }
     };
+
     loadOrder();
   }, [navState]);
 
-  // Redirect to home if still no data
   if (!orderData) {
     return (
       <h2 style={{ textAlign: "center", marginTop: 50 }}>
@@ -55,10 +57,10 @@ export function OrderSuccess() {
     );
   }
 
-  const { orderId, totalPrice, address, paymentMethod } = orderData;
+  const { orderId, total, address, paymentMethod, docId } = orderData;
 
   const goToTracking = () => {
-    navigate(`/order-tracking/${orderId}`);
+    navigate(`/order-tracking/${docId}`); // ⭐ FIXED (use Firebase document ID)
   };
 
   return (
@@ -70,7 +72,7 @@ export function OrderSuccess() {
 
         <div className="order-details">
           <p><b>Order ID:</b> {orderId}</p>
-          <p><b>Total Paid:</b> ₹{totalPrice}</p>
+          <p><b>Total Paid:</b> ₹{total}</p>
           <p><b>Payment Mode:</b> {paymentMethod?.toUpperCase()}</p>
           <p><b>Delivery Address:</b> {address}</p>
           <p className="time-text">⏳ Estimated delivery in 35 – 45 minutes</p>
