@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./AdminOrders.css";
-import { collection, onSnapshot, doc, updateDoc, getDocs } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 
 const statusOptions = [
@@ -18,28 +18,25 @@ export function AdminOrders() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // ⭐ LOAD USERS FIRST
-  const loadUsers = async () => {
-    const snap = await getDocs(collection(db, "users"));
-    let map = {};
-    snap.forEach((d) => (map[d.id] = d.data()));
-    setUsers(map);
-    return map;
+  // ⭐ REAL-TIME USERS LISTENER
+  const loadUsers = () => {
+    return onSnapshot(collection(db, "users"), (snapshot) => {
+      let map = {};
+      snapshot.forEach((d) => (map[d.id] = d.data()));
+      setUsers(map);
+      console.log(`✅ Loaded ${snapshot.docs.length} users`);
+    });
   };
 
   // ⭐ REAL-TIME ORDERS LISTENER
-  const loadOrders = (userMap) => {
+  const loadOrders = () => {
     return onSnapshot(collection(db, "orders"), (snapshot) => {
       const list = snapshot.docs.map((d) => {
         const order = d.data();
-        const userInfo = userMap[order.userId] || {};
-
+        // Users will be mapped via state, no need to pass userMap
         return {
           id: d.id,
           ...order,
-          userName: userInfo.name || "Unknown",
-          userMobile: userInfo.mobile || "N/A",
-          userAddress: userInfo.address || "Not Provided",
         };
       });
 
@@ -57,21 +54,24 @@ export function AdminOrders() {
 
   // ⭐ MAIN LOADER
   useEffect(() => {
-    let unsubscribe = null;
+    let unsubscribeUsers = null;
+    let unsubscribeOrders = null;
 
     const initAll = async () => {
-      const userMap = await loadUsers();
+      // Start both listeners
+      unsubscribeUsers = loadUsers();
 
       // Safari FIX — load second call after micro-delay
       setTimeout(() => {
-        unsubscribe = loadOrders(userMap);
+        unsubscribeOrders = loadOrders();
       }, 10);
     };
 
     initAll();
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeUsers) unsubscribeUsers();
+      if (unsubscribeOrders) unsubscribeOrders();
     };
   }, []);
 
@@ -79,15 +79,19 @@ export function AdminOrders() {
     return <h3 style={{ textAlign: "center", marginTop: 40 }}>Loading Orders...</h3>;
   }
 
-  // ⭐ SEARCH
+  // ⭐ SEARCH - Updated to handle dynamic user mapping
   const filteredOrders = orders.filter((o) => {
     const k = search.toLowerCase();
+    const userInfo = users[o.userId] || {};
+    const userName = userInfo.name || "";
+    const userMobile = userInfo.mobile || "";
+
     return (
       String(o.orderId).includes(k) ||
-      o.userName.toLowerCase().includes(k) ||
-      o.userMobile.toLowerCase().includes(k) ||
+      userName.toLowerCase().includes(k) ||
+      userMobile.toLowerCase().includes(k) ||
       (o.address || "").toLowerCase().includes(k) ||
-      (o.userAddress || "").toLowerCase().includes(k) ||
+      (userInfo.address || "").toLowerCase().includes(k) ||
       (o.paymentMethod || "").toLowerCase().includes(k) ||
       o.items?.some((i) => i.name.toLowerCase().includes(k))
     );
@@ -134,81 +138,89 @@ export function AdminOrders() {
         </thead>
 
         <tbody>
-          {filteredOrders.map((o, index) => (
-            <tr key={o.id}>
-              <td>{index + 1}</td>
-              <td>{o.orderId}</td>
-              <td>{o.userName}</td>
-              <td>{o.userMobile}</td>
+          {filteredOrders.map((o, index) => {
+            // ⭐ DYNAMIC USER MAPPING
+            const userInfo = users[o.userId] || {};
+            const userName = userInfo.name || "Unknown";
+            const userMobile = userInfo.mobile || "N/A";
+            const userAddress = userInfo.address || "Not Provided";
 
-              {/* ⭐ FIX total crash */}
-              <td>₹{o.total || o.totalPrice}</td>
+            return (
+              <tr key={o.id}>
+                <td>{index + 1}</td>
+                <td>{o.orderId}</td>
+                <td>{userName}</td>
+                <td>{userMobile}</td>
 
-              <td>
-                <span
-                  style={{
-                    padding: "5px 8px",
-                    borderRadius: "6px",
-                    color: "#fff",
-                    background:
-                      o.paymentMethod?.toLowerCase() === "cod"
-                        ? "#007bff"
-                        : "green",
-                  }}
-                >
-                  {o.paymentMethod?.toUpperCase()}
-                </span>
-              </td>
+                {/* ⭐ FIX total crash */}
+                <td>₹{o.total || o.totalPrice}</td>
 
-              <td>
-                <select
-                  value={o.status}
-                  onChange={(e) => updateStatus(o.id, e.target.value)}
-                >
-                  {statusOptions.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </td>
+                <td>
+                  <span
+                    style={{
+                      padding: "5px 8px",
+                      borderRadius: "6px",
+                      color: "#fff",
+                      background:
+                        o.paymentMethod?.toLowerCase() === "cod"
+                          ? "#007bff"
+                          : "green",
+                    }}
+                  >
+                    {o.paymentMethod?.toUpperCase()}
+                  </span>
+                </td>
 
-              <td>
-                <ul>
-                  {o.items?.map((i, idx) => (
-                    <li key={idx}>
-                      {i.name} × {i.qty}
-                    </li>
-                  ))}
-                </ul>
-              </td>
+                <td>
+                  <select
+                    value={o.status}
+                    onChange={(e) => updateStatus(o.id, e.target.value)}
+                  >
+                    {statusOptions.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </td>
 
-              <td>
-                <b>Delivery Address:</b> <br />
-                {o.address || "Not Provided"} <br /><br />
+                <td>
+                  <ul>
+                    {o.items?.map((i, idx) => (
+                      <li key={idx}>
+                        {i.name} × {i.qty}
+                      </li>
+                    ))}
+                  </ul>
+                </td>
 
-                <b>Customer Address:</b>
-                <p>{o.userAddress}</p>
+                <td>
+                  <b>Delivery Address:</b> <br />
+                  {o.address || "Not Provided"} <br /><br />
 
-                <input
-                  className="delivery-input"
-                  type="text"
-                  placeholder="Delivery Boy Name"
-                  value={o.boyName || ""}
-                  onChange={(e) => updateBoyName(o.id, e.target.value)}
-                />
+                  <b>Customer Address:</b>
+                  <p>{userAddress}</p>
 
-                <input
-                  className="delivery-input"
-                  type="tel"
-                  placeholder="Phone"
-                  value={o.boyPhone || ""}
-                  onChange={(e) => updateBoyPhone(o.id, e.target.value)}
-                  style={{ marginTop: 6 }}
-                />
-              </td>
-            </tr>
-          ))}
+                  <input
+                    className="delivery-input"
+                    type="text"
+                    placeholder="Delivery Boy Name"
+                    value={o.boyName || ""}
+                    onChange={(e) => updateBoyName(o.id, e.target.value)}
+                  />
+
+                  <input
+                    className="delivery-input"
+                    type="tel"
+                    placeholder="Phone"
+                    value={o.boyPhone || ""}
+                    onChange={(e) => updateBoyPhone(o.id, e.target.value)}
+                    style={{ marginTop: 6 }}
+                  />
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
