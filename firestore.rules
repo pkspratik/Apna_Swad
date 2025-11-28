@@ -52,6 +52,14 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
     
+    // Counters collection for atomic order ID generation
+    match /counters/{counterId} {
+      // Only allow backend (admin SDK) to read/write counters
+      // Frontend should never directly access this
+      allow read: if isAdmin();
+      allow write: if false; // Only backend can write via admin SDK
+    }
+    
     // Menu/Products collection
     match /menu/{menuId} {
       allow read: if true;

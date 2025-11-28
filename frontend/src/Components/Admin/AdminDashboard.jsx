@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./AdminDashboard.css";
-import { collection, onSnapshot, deleteDoc, doc, getDocs } from "firebase/firestore";
+import { collection, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext/AuthContext";
@@ -12,49 +12,63 @@ export function AdminDashboard() {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
-  // ⭐ FETCH USERS FROM FIRESTORE
-  const loadUsers = async () => {
-    const snap = await getDocs(collection(db, "users"));
-    let map = {};
-    snap.forEach((d) => {
-      map[d.id] = d.data();
+  // ⭐ REAL-TIME USERS LISTENER
+  const loadUsers = () => {
+    return onSnapshot(collection(db, "users"), (snapshot) => {
+      let map = {};
+      snapshot.forEach((d) => (map[d.id] = d.data()));
+      setUsers(map);
+      console.log(`✅ Loaded ${snapshot.docs.length} users`);
     });
-    setUsers(map); // { uid: {...userdata} }
   };
 
-  // ⭐ FETCH ORDERS + MERGE USER DATA
+  // ⭐ FETCH ORDERS + MERGE USER DATA - Real-time
   useEffect(() => {
-    loadUsers();
+    let unsubscribeUsers = null;
+    let unsubscribeOrders = null;
 
-    const unsubscribe = onSnapshot(
-      collection(db, "orders"),
-      (snapshot) => {
-        const list = snapshot.docs.map((d) => {
-          const data = d.data();
-          const userData = users[data.userId] || {};
+    const initAll = async () => {
+      // Start users listener first
+      unsubscribeUsers = loadUsers();
 
-          return {
-            id: d.id,
-            ...data,
-            userName: userData.name || "Unknown",
-            userMobile: userData.mobile || "Not Available",
-            userAddress: userData.address || "No Address Provided",
-          };
-        });
+      // Start orders listener after a micro-delay (Safari fix)
+      setTimeout(() => {
+        unsubscribeOrders = onSnapshot(
+          collection(db, "orders"),
+          (snapshot) => {
+            const list = snapshot.docs.map((d) => {
+              const data = d.data();
+              const userData = users[data.userId] || {};
 
-        list.sort(
-          (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+              return {
+                id: d.id,
+                ...data,
+                userName: userData.name || "Unknown",
+                userMobile: userData.mobile || "Not Available",
+                userAddress: userData.address || "No Address Provided",
+              };
+            });
+
+            list.sort(
+              (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+            );
+
+            setOrders(list);
+          },
+          (err) => {
+            console.error("🔥 Error fetching orders:", err);
+          }
         );
+      }, 10);
+    };
 
-        setOrders(list);
-      },
-      (err) => {
-        console.error("🔥 Error fetching orders:", err);
-      }
-    );
+    initAll();
 
-    return () => unsubscribe();
-  }, [users]); // reload when users loaded
+    return () => {
+      if (unsubscribeUsers) unsubscribeUsers();
+      if (unsubscribeOrders) unsubscribeOrders();
+    };
+  }, [users]); // Reload when users update
 
   // 🔴 Logout handler
   const handleLogout = async () => {

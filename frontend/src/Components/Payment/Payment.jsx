@@ -3,8 +3,7 @@ import "./Payment.css";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext/AuthContext";
-import { setDoc, doc, serverTimestamp } from "firebase/firestore";
-import { db, auth } from "../../firebase";
+import { auth } from "../../firebase";
 
 export function Payment() {
   const { cart } = useCart();
@@ -50,38 +49,9 @@ export function Payment() {
   const getCartBackup = () =>
     cart.length > 0 ? cart : JSON.parse(localStorage.getItem("cartItems") || "[]");
 
-  // -------------------------------
-  // ⭐ SAVE ORDER — SAME orderId IS DOC ID
-  // -------------------------------
-  const saveOrderToFirebase = async (orderId, mode, addressText) => {
-    const cartBackup = getCartBackup();
-    const currentUser = auth.currentUser;
-
-    if (!currentUser) throw new Error("User not logged in!");
-    if (!cartBackup || cartBackup.length === 0) throw new Error("Cart empty!");
-
-    const orderRef = doc(db, "orders", String(orderId));
-
-    const orderDetails = {
-      orderId: Number(orderId),
-      userId: currentUser.uid,
-      items: cartBackup,
-      total: totalPrice,
-      address: addressText,
-      paymentMethod: mode,
-      status: "Order Placed",
-      createdAt: serverTimestamp(),
-      boyName: "",
-      boyPhone: "",
-    };
-
-    await setDoc(orderRef, orderDetails, { merge: true });
-
-    return orderDetails;
-  };
 
   // --------------------------------
-  // ⭐ COD ORDER
+  // ⭐ COD ORDER - Using Backend API with Transaction
   // --------------------------------
   const handleCODOrder = async () => {
     if (!deliveryInfo?.fullAddress) return alert("Please detect your location first");
@@ -89,14 +59,42 @@ export function Payment() {
     const addressText = `${deliveryInfo.fullAddress} — Phone: ${deliveryInfo.phone}`;
 
     try {
-      const orderId = Date.now();
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("User not logged in!");
 
-      const saved = await saveOrderToFirebase(orderId, "cod", addressText);
+      const cartBackup = getCartBackup();
+      if (!cartBackup || cartBackup.length === 0) throw new Error("Cart is empty!");
+
+      // Get user's auth token
+      const token = await currentUser.getIdToken();
+
+      // Call backend API to create order with atomic ID generation
+      const response = await fetch("/api/orders/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          items: cartBackup,
+          total: totalPrice,
+          address: addressText,
+          paymentMethod: "cod",
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create order");
+      }
+
+      const result = await response.json();
+      const orderId = result.order.orderId;
 
       // Save fallback id
       localStorage.setItem("apnaSwad_last_order", orderId);
 
-      // SEND CORRECT DATA TO ORDER SUCCESS
+      // Navigate to order success
       navigate("/order-success", {
         state: {
           docId: String(orderId),
@@ -107,12 +105,13 @@ export function Payment() {
         },
       });
     } catch (err) {
-      alert("COD Failed: " + err.message);
+      console.error("COD Order Error:", err);
+      alert("Order Failed: " + err.message);
     }
   };
 
   // --------------------------------
-  // ⭐ UPI ORDER
+  // ⭐ UPI ORDER - Using Backend API with Transaction
   // --------------------------------
   const handleUPIPaid = async () => {
     if (!deliveryInfo?.fullAddress) return alert("Please detect your location first");
@@ -120,13 +119,41 @@ export function Payment() {
     const addressText = `${deliveryInfo.fullAddress} — Phone: ${deliveryInfo.phone}`;
 
     try {
-      const orderId = Date.now();
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("User not logged in!");
 
-      const saved = await saveOrderToFirebase(orderId, "upi", addressText);
+      const cartBackup = getCartBackup();
+      if (!cartBackup || cartBackup.length === 0) throw new Error("Cart is empty!");
+
+      // Get user's auth token
+      const token = await currentUser.getIdToken();
+
+      // Call backend API to create order with atomic ID generation
+      const response = await fetch("/api/orders/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          items: cartBackup,
+          total: totalPrice,
+          address: addressText,
+          paymentMethod: "upi",
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create order");
+      }
+
+      const result = await response.json();
+      const orderId = result.order.orderId;
 
       localStorage.setItem("apnaSwad_last_order", orderId);
 
-      // SEND CORRECT DATA TO ORDER SUCCESS
+      // Navigate to order success
       navigate("/order-success", {
         state: {
           docId: String(orderId),
@@ -137,7 +164,8 @@ export function Payment() {
         },
       });
     } catch (err) {
-      alert("UPI Failed: " + err.message);
+      console.error("UPI Order Error:", err);
+      alert("UPI Payment Failed: " + err.message);
     }
   };
 

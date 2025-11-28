@@ -97,17 +97,53 @@ export function AdminOrders() {
     );
   });
 
-  // ⭐ UPDATE STATUS
+  // ⭐ UPDATE STATUS - With Optimistic UI
   const updateStatus = async (id, value) => {
-    await updateDoc(doc(db, "orders", id), { status: value });
+    // Optimistic update - immediately update UI
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.id === id ? { ...order, status: value } : order
+      )
+    );
+
+    try {
+      await updateDoc(doc(db, "orders", id), { status: value });
+    } catch (err) {
+      console.error("Failed to update status:", err);
+      alert("Failed to update status. Please try again.");
+      // Revert on error - reload from server
+      loadOrders();
+    }
   };
 
   const updateBoyName = async (id, val) => {
-    await updateDoc(doc(db, "orders", id), { boyName: val });
+    // Optimistic update
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.id === id ? { ...order, boyName: val } : order
+      )
+    );
+
+    try {
+      await updateDoc(doc(db, "orders", id), { boyName: val });
+    } catch (err) {
+      console.error("Failed to update delivery boy name:", err);
+    }
   };
 
   const updateBoyPhone = async (id, val) => {
-    await updateDoc(doc(db, "orders", id), { boyPhone: val });
+    // Optimistic update
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.id === id ? { ...order, boyPhone: val } : order
+      )
+    );
+
+    try {
+      await updateDoc(doc(db, "orders", id), { boyPhone: val });
+    } catch (err) {
+      console.error("Failed to update delivery boy phone:", err);
+    }
   };
 
   return (
