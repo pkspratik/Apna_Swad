@@ -18,146 +18,79 @@ export function AdminOrders() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // ⭐ REAL-TIME USERS LISTENER
+  // ⭐ LOAD USERS
   const loadUsers = () => {
-    return onSnapshot(
-      collection(db, "users"),
-      (snapshot) => {
-        let map = {};
-        snapshot.forEach((d) => (map[d.id] = d.data()));
-        setUsers(map);
-        console.log(`✅ Loaded ${snapshot.docs.length} users`);
-      },
-      (error) => {
-        console.error("❌ Error loading users:", error);
-      }
-    );
+    return onSnapshot(collection(db, "users"), (snapshot) => {
+      let map = {};
+      snapshot.forEach((d) => (map[d.id] = d.data()));
+      setUsers(map);
+    });
   };
 
-  // ⭐ REAL-TIME ORDERS LISTENER
+  // ⭐ LOAD ORDERS
   const loadOrders = () => {
-    return onSnapshot(
-      collection(db, "orders"),
-      (snapshot) => {
-        const list = snapshot.docs.map((d) => {
-          const order = d.data();
-          // Users will be mapped via state, no need to pass userMap
-          return {
-            id: d.id,
-            ...order,
-          };
-        });
+    return onSnapshot(collection(db, "orders"), (snapshot) => {
+      const list = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
 
-        // ⭐ FIX SORTING CRASH
-        list.sort((a, b) => {
-          const t1 = a.createdAt?.seconds || 0;
-          const t2 = b.createdAt?.seconds || 0;
-          return t2 - t1;
-        });
+      list.sort(
+        (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+      );
 
-        setOrders(list);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("❌ Error loading orders:", error);
-        setLoading(false);
-        alert("Error loading orders: " + error.message);
-      }
-    );
+      setOrders(list);
+      setLoading(false);
+    });
   };
 
-  // ⭐ MAIN LOADER
+  // ⭐ MAIN LISTENERS
   useEffect(() => {
-    let unsubscribeUsers = null;
-    let unsubscribeOrders = null;
-
-    const initAll = async () => {
-      // Start both listeners
-      unsubscribeUsers = loadUsers();
-
-      // Safari FIX — load second call after micro-delay
-      setTimeout(() => {
-        unsubscribeOrders = loadOrders();
-      }, 10);
-    };
-
-    initAll();
-
+    const unsubUsers = loadUsers();
+    const unsubOrders = loadOrders();
     return () => {
-      if (unsubscribeUsers) unsubscribeUsers();
-      if (unsubscribeOrders) unsubscribeOrders();
+      unsubUsers();
+      unsubOrders();
     };
   }, []);
 
-  if (loading) {
-    return <h3 style={{ textAlign: "center", marginTop: 40 }}>Loading Orders...</h3>;
-  }
+  if (loading) return <h3 style={{ textAlign: "center" }}>Loading Orders...</h3>;
 
-  // ⭐ SEARCH - Updated to handle dynamic user mapping
+  // ⭐ SEARCH ENGINE
   const filteredOrders = orders.filter((o) => {
     const k = search.toLowerCase();
-    const userInfo = users[o.userId] || {};
-    const userName = userInfo.name || "";
-    const userMobile = userInfo.mobile || "";
-
+    const u = users[o.userId] || {};
     return (
-      String(o.orderId).includes(k) ||
-      userName.toLowerCase().includes(k) ||
-      userMobile.toLowerCase().includes(k) ||
+      String(o.orderId || "").includes(k) ||
+      (u.name || "").toLowerCase().includes(k) ||
+      (u.mobile || "").toLowerCase().includes(k) ||
       (o.address || "").toLowerCase().includes(k) ||
-      (userInfo.address || "").toLowerCase().includes(k) ||
+      (u.address || "").toLowerCase().includes(k) ||
       (o.paymentMethod || "").toLowerCase().includes(k) ||
       o.items?.some((i) => i.name.toLowerCase().includes(k))
     );
   });
 
-  // ⭐ UPDATE STATUS - With Optimistic UI
+  // ⭐ UPDATE STATUS
   const updateStatus = async (id, value) => {
-    // Optimistic update - immediately update UI
-    setOrders(prevOrders =>
-      prevOrders.map(order =>
-        order.id === id ? { ...order, status: value } : order
-      )
+    setOrders((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, status: value } : o))
     );
-
-    try {
-      await updateDoc(doc(db, "orders", id), { status: value });
-    } catch (err) {
-      console.error("Failed to update status:", err);
-      alert("Failed to update status. Please try again.");
-      // Revert on error - reload from server
-      loadOrders();
-    }
+    await updateDoc(doc(db, "orders", id), { status: value });
   };
 
-  const updateBoyName = async (id, val) => {
-    // Optimistic update
-    setOrders(prevOrders =>
-      prevOrders.map(order =>
-        order.id === id ? { ...order, boyName: val } : order
-      )
+  const updateBoyName = async (id, value) => {
+    setOrders((p) =>
+      p.map((o) => (o.id === id ? { ...o, boyName: value } : o))
     );
-
-    try {
-      await updateDoc(doc(db, "orders", id), { boyName: val });
-    } catch (err) {
-      console.error("Failed to update delivery boy name:", err);
-    }
+    await updateDoc(doc(db, "orders", id), { boyName: value });
   };
 
-  const updateBoyPhone = async (id, val) => {
-    // Optimistic update
-    setOrders(prevOrders =>
-      prevOrders.map(order =>
-        order.id === id ? { ...order, boyPhone: val } : order
-      )
+  const updateBoyPhone = async (id, value) => {
+    setOrders((p) =>
+      p.map((o) => (o.id === id ? { ...o, boyPhone: value } : o))
     );
-
-    try {
-      await updateDoc(doc(db, "orders", id), { boyPhone: val });
-    } catch (err) {
-      console.error("Failed to update delivery boy phone:", err);
-    }
+    await updateDoc(doc(db, "orders", id), { boyPhone: value });
   };
 
   return (
@@ -189,32 +122,30 @@ export function AdminOrders() {
 
         <tbody>
           {filteredOrders.map((o, index) => {
-            // ⭐ DYNAMIC USER MAPPING
-            const userInfo = users[o.userId] || {};
-            const userName = userInfo.name || "Unknown";
-            const userMobile = userInfo.mobile || "N/A";
-            const userAddress = userInfo.address || "Not Provided";
+            // ⭐ SAME MERGE LOGIC AS ADMIN DASHBOARD
+            const user = users[o.userId] || {};
+            const userName = user.name || "Unknown";
+            const userMobile = user.mobile || "Not Available";
+            const userAddress = user.address || "Not Provided";
 
             return (
               <tr key={o.id}>
                 <td>{index + 1}</td>
-                <td>{o.orderId}</td>
+                <td>{o.orderId || o.id}</td>
                 <td>{userName}</td>
                 <td>{userMobile}</td>
-
-                {/* ⭐ FIX total crash */}
-                <td>₹{o.total || o.totalPrice}</td>
+                <td>₹{o.total || o.totalPrice || 0}</td>
 
                 <td>
                   <span
                     style={{
-                      padding: "5px 8px",
-                      borderRadius: "6px",
-                      color: "#fff",
+                      padding: "5px 7px",
                       background:
                         o.paymentMethod?.toLowerCase() === "cod"
                           ? "#007bff"
                           : "green",
+                      color: "white",
+                      borderRadius: "5px",
                     }}
                   >
                     {o.paymentMethod?.toUpperCase()}
@@ -245,9 +176,8 @@ export function AdminOrders() {
                 </td>
 
                 <td>
-                  <b>Delivery Address:</b> <br />
-                  {o.address || "Not Provided"} <br /><br />
-
+                  <b>Delivery Address:</b> {o.address || "Not Provided"} <br />
+                  <br />
                   <b>Customer Address:</b>
                   <p>{userAddress}</p>
 
@@ -262,7 +192,7 @@ export function AdminOrders() {
                   <input
                     className="delivery-input"
                     type="tel"
-                    placeholder="Phone"
+                    placeholder="Delivery Boy Phone"
                     value={o.boyPhone || ""}
                     onChange={(e) => updateBoyPhone(o.id, e.target.value)}
                     style={{ marginTop: 6 }}
