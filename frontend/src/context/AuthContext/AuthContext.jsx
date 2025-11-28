@@ -213,7 +213,7 @@ export const AuthProvider = ({ children }) => {
       // -----------------------
       if (userRole === "admin") {
         // Invalidate all old sessions
-        await invalidateOldSessions(currentUser.uid);
+        // await invalidateOldSessions(currentUser.uid); // 🔴 DISABLED for global access (allow multiple devices)
 
         // Create new session
         await createSession(currentUser.uid, currentUser.email);

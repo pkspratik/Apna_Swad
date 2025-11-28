@@ -20,36 +20,50 @@ export function AdminOrders() {
 
   // ⭐ REAL-TIME USERS LISTENER
   const loadUsers = () => {
-    return onSnapshot(collection(db, "users"), (snapshot) => {
-      let map = {};
-      snapshot.forEach((d) => (map[d.id] = d.data()));
-      setUsers(map);
-      console.log(`✅ Loaded ${snapshot.docs.length} users`);
-    });
+    return onSnapshot(
+      collection(db, "users"),
+      (snapshot) => {
+        let map = {};
+        snapshot.forEach((d) => (map[d.id] = d.data()));
+        setUsers(map);
+        console.log(`✅ Loaded ${snapshot.docs.length} users`);
+      },
+      (error) => {
+        console.error("❌ Error loading users:", error);
+      }
+    );
   };
 
   // ⭐ REAL-TIME ORDERS LISTENER
   const loadOrders = () => {
-    return onSnapshot(collection(db, "orders"), (snapshot) => {
-      const list = snapshot.docs.map((d) => {
-        const order = d.data();
-        // Users will be mapped via state, no need to pass userMap
-        return {
-          id: d.id,
-          ...order,
-        };
-      });
+    return onSnapshot(
+      collection(db, "orders"),
+      (snapshot) => {
+        const list = snapshot.docs.map((d) => {
+          const order = d.data();
+          // Users will be mapped via state, no need to pass userMap
+          return {
+            id: d.id,
+            ...order,
+          };
+        });
 
-      // ⭐ FIX SORTING CRASH
-      list.sort((a, b) => {
-        const t1 = a.createdAt?.seconds || 0;
-        const t2 = b.createdAt?.seconds || 0;
-        return t2 - t1;
-      });
+        // ⭐ FIX SORTING CRASH
+        list.sort((a, b) => {
+          const t1 = a.createdAt?.seconds || 0;
+          const t2 = b.createdAt?.seconds || 0;
+          return t2 - t1;
+        });
 
-      setOrders(list);
-      setLoading(false);
-    });
+        setOrders(list);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("❌ Error loading orders:", error);
+        setLoading(false);
+        alert("Error loading orders: " + error.message);
+      }
+    );
   };
 
   // ⭐ MAIN LOADER

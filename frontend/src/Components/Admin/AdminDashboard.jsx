@@ -14,12 +14,18 @@ export function AdminDashboard() {
 
   // ⭐ REAL-TIME USERS LISTENER
   const loadUsers = () => {
-    return onSnapshot(collection(db, "users"), (snapshot) => {
-      let map = {};
-      snapshot.forEach((d) => (map[d.id] = d.data()));
-      setUsers(map);
-      console.log(`✅ Loaded ${snapshot.docs.length} users`);
-    });
+    return onSnapshot(
+      collection(db, "users"),
+      (snapshot) => {
+        let map = {};
+        snapshot.forEach((d) => (map[d.id] = d.data()));
+        setUsers(map);
+        console.log(`✅ Loaded ${snapshot.docs.length} users`);
+      },
+      (error) => {
+        console.error("❌ Error loading users:", error);
+      }
+    );
   };
 
   // ⭐ FETCH ORDERS + MERGE USER DATA - Real-time
@@ -57,6 +63,7 @@ export function AdminDashboard() {
           },
           (err) => {
             console.error("🔥 Error fetching orders:", err);
+            alert("Error fetching orders: " + err.message);
           }
         );
       }, 10);
