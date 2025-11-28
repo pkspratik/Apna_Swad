@@ -27,23 +27,44 @@ export function OrderTracking() {
   // ⭐ Find the actual Firestore doc ID by orderId
   const findFirestoreDoc = async () => {
     try {
-      const q = query(
+      // Try numeric orderId first (backend API orders)
+      const numericOrderId = Number(orderId);
+
+      if (!isNaN(numericOrderId)) {
+        const q = query(
+          collection(db, "orders"),
+          where("orderId", "==", numericOrderId)
+        );
+
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+          const d = snap.docs[0];
+          setDocId(d.id);
+          return d.id;
+        }
+      }
+
+      // Fallback: Try string orderId (client-side Firestore orders)
+      const q2 = query(
         collection(db, "orders"),
-        where("orderId", "==", Number(orderId)) // 🔥 FIXED: number match
+        where("orderId", "==", orderId)
       );
 
-      const snap = await getDocs(q);
+      const snap2 = await getDocs(q2);
 
-      if (!snap.empty) {
-        const d = snap.docs[0];
+      if (!snap2.empty) {
+        const d = snap2.docs[0];
         setDocId(d.id);
         return d.id;
       }
 
-      return null;
+      // Last resort: Try using orderId as document ID directly
+      return orderId;
     } catch (err) {
       console.error("Doc lookup failed:", err);
-      return null;
+      // Return orderId as potential document ID
+      return orderId;
     }
   };
 
@@ -124,7 +145,16 @@ export function OrderTracking() {
     );
   }
 
+  // Calculate current step index based on order status
   const currentIndex = steps.findIndex((s) => s === order.status);
+
+  // Debug logging
+  console.log("Order Status:", order.status);
+  console.log("Current Index:", currentIndex);
+  console.log("Steps:", steps);
+
+  // If status doesn't match any step, default to first step (Order Placed)
+  const activeIndex = currentIndex === -1 ? 0 : currentIndex;
 
   return (
     <div className="tracking-container">
@@ -134,6 +164,7 @@ export function OrderTracking() {
 
       <p><b>Order ID:</b> {orderId}</p>
       <p><b>Total:</b> ₹{order.total || order.totalPrice}</p>
+      <p><b>Current Status:</b> {order.status}</p>
 
       {etaMinutes !== null && order.status !== "Delivered" && (
         <p className="eta-time">⏳ Arriving in approx <b>{etaMinutes} min</b></p>
@@ -149,7 +180,7 @@ export function OrderTracking() {
         {steps.map((step, index) => (
           <div
             key={step}
-            className={`step ${index <= currentIndex ? "step-active" : ""}`}
+            className={`step ${index <= activeIndex ? "step-active" : ""}`}
           >
             <div className="step-circle">{index + 1}</div>
             <p className="step-label">{step}</p>

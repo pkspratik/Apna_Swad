@@ -51,7 +51,7 @@ export function Payment() {
 
 
   // --------------------------------
-  // ⭐ COD ORDER - Using Backend API with Transaction
+  // ⭐ COD ORDER - Hybrid: Try Backend API, fallback to Client-side Firestore
   // --------------------------------
   const handleCODOrder = async () => {
     if (!deliveryInfo?.fullAddress) return alert("Please detect your location first");
@@ -65,31 +65,58 @@ export function Payment() {
       const cartBackup = getCartBackup();
       if (!cartBackup || cartBackup.length === 0) throw new Error("Cart is empty!");
 
-      // Get user's auth token
-      const token = await currentUser.getIdToken();
+      let orderId;
+      let useBackend = true;
 
-      // Call backend API to create order with atomic ID generation
-      const response = await fetch("/api/orders/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+      try {
+        // Try backend API first
+        const token = await currentUser.getIdToken();
+        const response = await fetch("/api/orders/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            items: cartBackup,
+            total: totalPrice,
+            address: addressText,
+            paymentMethod: "cod",
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Backend API not available");
+        }
+
+        const result = await response.json();
+        orderId = result.order.orderId;
+      } catch (backendError) {
+        console.warn("Backend API failed, using client-side Firestore:", backendError.message);
+        useBackend = false;
+
+        // Fallback to client-side Firestore
+        const { db } = await import("../../firebase");
+        const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
+
+        const docRef = await addDoc(collection(db, "orders"), {
+          userId: currentUser.uid,
           items: cartBackup,
           total: totalPrice,
           address: addressText,
           paymentMethod: "cod",
-        }),
-      });
+          status: "Order Placed",
+          createdAt: serverTimestamp(),
+          boyName: "",
+          boyPhone: "",
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create order");
+        orderId = docRef.id;
+
+        // Update the document with its own ID as orderId field
+        const { doc: docFunc, updateDoc } = await import("firebase/firestore");
+        await updateDoc(docFunc(db, "orders", docRef.id), { orderId: docRef.id });
       }
-
-      const result = await response.json();
-      const orderId = result.order.orderId;
 
       // Save fallback id
       localStorage.setItem("apnaSwad_last_order", orderId);
@@ -98,7 +125,7 @@ export function Payment() {
       navigate("/order-success", {
         state: {
           docId: String(orderId),
-          orderId: Number(orderId),
+          orderId: useBackend ? Number(orderId) : orderId,
           totalPrice: totalPrice,
           address: addressText,
           paymentMethod: "cod",
@@ -111,7 +138,7 @@ export function Payment() {
   };
 
   // --------------------------------
-  // ⭐ UPI ORDER - Using Backend API with Transaction
+  // ⭐ UPI ORDER - Hybrid: Try Backend API, fallback to Client-side Firestore
   // --------------------------------
   const handleUPIPaid = async () => {
     if (!deliveryInfo?.fullAddress) return alert("Please detect your location first");
@@ -125,31 +152,58 @@ export function Payment() {
       const cartBackup = getCartBackup();
       if (!cartBackup || cartBackup.length === 0) throw new Error("Cart is empty!");
 
-      // Get user's auth token
-      const token = await currentUser.getIdToken();
+      let orderId;
+      let useBackend = true;
 
-      // Call backend API to create order with atomic ID generation
-      const response = await fetch("/api/orders/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+      try {
+        // Try backend API first
+        const token = await currentUser.getIdToken();
+        const response = await fetch("/api/orders/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            items: cartBackup,
+            total: totalPrice,
+            address: addressText,
+            paymentMethod: "upi",
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Backend API not available");
+        }
+
+        const result = await response.json();
+        orderId = result.order.orderId;
+      } catch (backendError) {
+        console.warn("Backend API failed, using client-side Firestore:", backendError.message);
+        useBackend = false;
+
+        // Fallback to client-side Firestore
+        const { db } = await import("../../firebase");
+        const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
+
+        const docRef = await addDoc(collection(db, "orders"), {
+          userId: currentUser.uid,
           items: cartBackup,
           total: totalPrice,
           address: addressText,
           paymentMethod: "upi",
-        }),
-      });
+          status: "Order Placed",
+          createdAt: serverTimestamp(),
+          boyName: "",
+          boyPhone: "",
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create order");
+        orderId = docRef.id;
+
+        // Update the document with its own ID as orderId field
+        const { doc: docFunc, updateDoc } = await import("firebase/firestore");
+        await updateDoc(docFunc(db, "orders", docRef.id), { orderId: docRef.id });
       }
-
-      const result = await response.json();
-      const orderId = result.order.orderId;
 
       localStorage.setItem("apnaSwad_last_order", orderId);
 
@@ -157,7 +211,7 @@ export function Payment() {
       navigate("/order-success", {
         state: {
           docId: String(orderId),
-          orderId: Number(orderId),
+          orderId: useBackend ? Number(orderId) : orderId,
           totalPrice: totalPrice,
           address: addressText,
           paymentMethod: "upi",
