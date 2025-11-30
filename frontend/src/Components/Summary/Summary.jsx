@@ -17,8 +17,11 @@ export function Summary() {
   const [userDistance, setUserDistance] = useState(null);
   const [userAddress, setUserAddress] = useState("");
   const [manualEntry, setManualEntry] = useState(false);
+
+  // Show proceed button only after location check
   const [locationChecked, setLocationChecked] = useState(false);
 
+  // Restaurant Location
   const restaurantLat = 26.033197;
   const restaurantLng = 84.835471;
 
@@ -34,7 +37,7 @@ export function Summary() {
       Math.cos(toRad(lat2)) *
       Math.sin(dLon / 2) ** 2;
 
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
   };
 
   const formatDistance = (d) => {
@@ -42,14 +45,37 @@ export function Summary() {
     return `${d.toFixed(2)} KM`;
   };
 
-  const handleGetLocation = () => {
+  const isInstagramBrowser = () =>
+    navigator.userAgent.includes("Instagram");
+
+  // ======================================================
+  // 📍 FAST, RELIABLE LOCATION DETECTION FOR ALL DEVICES
+  // ======================================================
+  const handleGetLocation = async () => {
     if (!user) {
       alert("Please login first");
       navigate("/login?redirect=summary");
       return;
     }
 
+    if (isInstagramBrowser()) {
+      alert("Location is blocked inside Instagram browser. Please open in Chrome.");
+      return;
+    }
+
     setChecking(true);
+
+    // Check permission state
+    try {
+      if (navigator.permissions) {
+        const perm = await navigator.permissions.query({ name: "geolocation" });
+        if (perm.state === "denied") {
+          alert("Please enable location in Chrome → Site Settings → Location → Allow");
+          setChecking(false);
+          return;
+        }
+      }
+    } catch { }
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -63,6 +89,7 @@ export function Summary() {
         setLocationChecked(true);
         setUser({ ...user, lat, lng });
 
+        // Fetch address
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
@@ -79,15 +106,56 @@ export function Summary() {
 
         setChecking(false);
       },
-      (error) => {
-        console.log("GPS Error:", error);
+      async (error) => {
+        console.log("GPS ERROR:", error);
+
+        // Fallback to IP location
+        const fallback = await fetch("https://ipapi.co/json/")
+          .then((r) => r.json())
+          .catch(() => null);
+
+        if (fallback && fallback.latitude) {
+          const distance = getDistance(
+            fallback.latitude,
+            fallback.longitude,
+            restaurantLat,
+            restaurantLng
+          );
+
+          setUserDistance(distance);
+          setDeliveryAvailable(true);
+          setLocationChecked(true);
+
+          setUser({
+            ...user,
+            lat: fallback.latitude,
+            lng: fallback.longitude,
+          });
+
+          setUserAddress(
+            `${fallback.city}, ${fallback.region}, ${fallback.country_name}`
+          );
+
+          alert("GPS unavailable, used approximate location.");
+          setChecking(false);
+          return;
+        }
+
+        alert("Location request timed out. Please turn ON GPS.");
         setChecking(false);
         setManualEntry(true);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      {
+        enableHighAccuracy: false, // Faster & reliable on Android
+        timeout: 8000,
+        maximumAge: 20000, // Use cached location if available
+      }
     );
   };
 
+  // ======================================================
+  // 💰 PRICE CALCULATION
+  // ======================================================
   const totalAmount = cart.reduce(
     (sum, item) => sum + Number(item.price.replace("₹", "")) * item.qty,
     0
@@ -96,6 +164,9 @@ export function Summary() {
   const deliveryCharge = totalAmount >= 499 ? 0 : 40;
   const grandTotal = totalAmount + deliveryCharge;
 
+  // ======================================================
+  // ✔ Proceed to Payment
+  // ======================================================
   const handlePayment = () => {
     if (!user) {
       alert("Please login to continue");
@@ -108,15 +179,6 @@ export function Summary() {
       return;
     }
 
-    // 🔥🔥🔥 STORE ITEMS INCLUDING IMAGE URL — FIXED
-    const itemsWithImg = cart.map((item) => ({
-      name: item.name,
-      option: item.option,
-      qty: item.qty,
-      price: item.price,
-      img: item.img, // <-- IMPORTANT FIX
-    }));
-
     localStorage.setItem(
       "apnaSwad_delivery_info",
       JSON.stringify({
@@ -124,10 +186,6 @@ export function Summary() {
         phone: user?.phone || "",
         coords: user?.lat ? { lat: user.lat, lng: user.lng } : null,
         distance: userDistance,
-        items: itemsWithImg, // <-- SEND ITEMS TO PAYMENT PAGE
-        totalAmount,
-        deliveryCharge,
-        grandTotal
       })
     );
 
@@ -138,6 +196,7 @@ export function Summary() {
     <div className="summary-container">
       <NevBar BrandTitle="Apna Swad" MenuItems={["Home", "Category"]} />
 
+      {/* Address Section */}
       <div className="address-section">
         <h3>Delivery Location</h3>
 
@@ -171,12 +230,13 @@ export function Summary() {
         )}
       </div>
 
+      {/* Items Section */}
       <div className="items-section">
         <h3>Order Summary</h3>
 
         {cart.map((item, idx) => (
           <div className="summary-item" key={idx}>
-            <img src={item.img} alt="" />
+            <img src={item.img} alt={item.name} />
             <div>
               <p className="item-name">{item.name}</p>
               <p className="item-option">{item.option}</p>
@@ -187,6 +247,7 @@ export function Summary() {
         ))}
       </div>
 
+      {/* Price Section */}
       <div className="price-section">
         <h3>Price Details</h3>
 

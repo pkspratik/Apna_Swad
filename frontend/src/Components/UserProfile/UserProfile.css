@@ -373,3 +373,35 @@
     flex-direction: column;
   }
 }
+
+/* Attractive order card */
+.attractive-card {
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  transition: 0.2s ease;
+}
+
+.attractive-card:hover {
+  transform: scale(1.01);
+}
+
+/* Item images */
+.order-item-box {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+  background: #f8f8f8;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+.order-item-img {
+  width: 55px;
+  height: 55px;
+  border-radius: 10px;
+  object-fit: cover;
+  margin-right: 10px;
+}
