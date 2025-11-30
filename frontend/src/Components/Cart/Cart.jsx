@@ -22,7 +22,6 @@ export function Cart() {
   const restaurantLat = 26.033207;
   const restaurantLng = 84.835460;
 
-  // Convert degrees to radians
   const toRad = (value) => (value * Math.PI) / 180;
 
   const getDistance = (lat1, lon1, lat2, lon2) => {
@@ -34,9 +33,7 @@ export function Cart() {
 
     const a =
       Math.sin(Δφ / 2) ** 2 +
-      Math.cos(φ1) *
-      Math.cos(φ2) *
-      Math.sin(Δλ / 2) ** 2;
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
 
     return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))); // KM
   };
@@ -46,39 +43,39 @@ export function Cart() {
     return `${distance.toFixed(2)} KM`;
   };
 
-  // Detect Instagram in-app browser (Android does not give location)
-  const isInstagramBrowser = () =>
-    navigator.userAgent.includes("Instagram");
+  // Detect Instagram in-app browser
+  const isInstagramBrowser = () => navigator.userAgent.includes("Instagram");
 
-  // Show detailed errors for Android Chrome
-  const locationErrorMessage = (error) => {
-    switch (error.code) {
-      case 1:
-        return "Location permission denied. Please allow permission from Browser → Site Settings → Location.";
-      case 2:
-        return "Location unavailable. Please turn ON GPS.";
-      case 3:
-        return "Location request timed out. Try again.";
-      default:
-        return "Unable to detect location. Please enable GPS + Permissions.";
-    }
-  };
-
-  const handleCheckDelivery = () => {
+  // Main Delivery Check Function
+  const handleCheckDelivery = async () => {
     if (!user) {
       alert("Please login first to check delivery availability");
       navigate("/login?redirect=cart");
       return;
     }
 
-    // Prevent Instagram in-app browser issue
     if (isInstagramBrowser()) {
-      alert("Location is blocked inside Instagram browser. Please open in Chrome browser.");
+      alert("Location is blocked inside Instagram browser. Please open in Chrome.");
       return;
     }
 
     setChecking(true);
     setDeliveryCheckedOnce(true);
+
+    // Check geolocation permission (Android fix)
+    try {
+      if (navigator.permissions) {
+        const permission = await navigator.permissions.query({ name: "geolocation" });
+
+        if (permission.state === "denied") {
+          alert("Please enable location from Chrome → Site Settings → Location → Allow");
+          setChecking(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.log("Permission API not supported");
+    }
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -88,21 +85,46 @@ export function Cart() {
         const distance = getDistance(lat, lng, restaurantLat, restaurantLng);
         setUserDistance(distance);
 
-        if (distance <= 2) setDeliveryAvailable(true);
+        if (distance <= 60) setDeliveryAvailable(true);
         else setDeliveryAvailable(false);
 
         setUser({ ...user, lat, lng });
 
         setChecking(false);
       },
-      (error) => {
-        alert(locationErrorMessage(error));
+      async (error) => {
+        console.log("GPS ERROR:", error);
+
+        // Fallback to IP Location
+        const fallback = await fetch("https://ipapi.co/json/")
+          .then((r) => r.json())
+          .catch(() => null);
+
+        if (fallback && fallback.latitude) {
+          const distance = getDistance(
+            fallback.latitude,
+            fallback.longitude,
+            restaurantLat,
+            restaurantLng
+          );
+
+          setUserDistance(distance);
+          setDeliveryAvailable(distance <= 60);
+
+          setUser({ ...user, lat: fallback.latitude, lng: fallback.longitude });
+
+          alert("GPS unavailable, used approximate location.");
+          setChecking(false);
+          return;
+        }
+
+        alert("Location request timed out. Turn ON GPS & try again.");
         setChecking(false);
       },
       {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
+        enableHighAccuracy: false,  // Faster & stable on Android
+        timeout: 8000,              // Faster timeout
+        maximumAge: 20000,          // Allows cached fix → prevents timeout
       }
     );
   };
@@ -162,7 +184,7 @@ export function Cart() {
 
       {deliveryAvailable === false && (
         <p style={{ color: "red", textAlign: "center", marginTop: 6 }}>
-          ❌ Sorry for saying that Delivery not available (Only within 2 KM We will increasing soon )
+          ❌ Delivery not available (Only within 60 KM)
           <br />📍 Distance: {formatDistance(userDistance)}
         </p>
       )}

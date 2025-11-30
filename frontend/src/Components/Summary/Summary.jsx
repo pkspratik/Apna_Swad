@@ -17,8 +17,6 @@ export function Summary() {
   const [userDistance, setUserDistance] = useState(null);
   const [userAddress, setUserAddress] = useState("");
   const [manualEntry, setManualEntry] = useState(false);
-
-  // 🔥 NEW — hide “Proceed to Payment” at start
   const [locationChecked, setLocationChecked] = useState(false);
 
   const restaurantLat = 26.033197;
@@ -44,9 +42,6 @@ export function Summary() {
     return `${d.toFixed(2)} KM`;
   };
 
-  // ======================================================
-  // 📍 Detect User Location
-  // ======================================================
   const handleGetLocation = () => {
     if (!user) {
       alert("Please login first");
@@ -65,7 +60,7 @@ export function Summary() {
         setUserDistance(distance);
 
         setDeliveryAvailable(true);
-        setLocationChecked(true); // 🔥 SHOW Proceed To Payment
+        setLocationChecked(true);
         setUser({ ...user, lat, lng });
 
         try {
@@ -93,9 +88,6 @@ export function Summary() {
     );
   };
 
-  // ======================================================
-  // 💰 PRICE CALCULATION
-  // ======================================================
   const totalAmount = cart.reduce(
     (sum, item) => sum + Number(item.price.replace("₹", "")) * item.qty,
     0
@@ -104,9 +96,6 @@ export function Summary() {
   const deliveryCharge = totalAmount >= 499 ? 0 : 40;
   const grandTotal = totalAmount + deliveryCharge;
 
-  // ======================================================
-  // ✔ Proceed to Payment
-  // ======================================================
   const handlePayment = () => {
     if (!user) {
       alert("Please login to continue");
@@ -119,6 +108,15 @@ export function Summary() {
       return;
     }
 
+    // 🔥🔥🔥 STORE ITEMS INCLUDING IMAGE URL — FIXED
+    const itemsWithImg = cart.map((item) => ({
+      name: item.name,
+      option: item.option,
+      qty: item.qty,
+      price: item.price,
+      img: item.img, // <-- IMPORTANT FIX
+    }));
+
     localStorage.setItem(
       "apnaSwad_delivery_info",
       JSON.stringify({
@@ -126,6 +124,10 @@ export function Summary() {
         phone: user?.phone || "",
         coords: user?.lat ? { lat: user.lat, lng: user.lng } : null,
         distance: userDistance,
+        items: itemsWithImg, // <-- SEND ITEMS TO PAYMENT PAGE
+        totalAmount,
+        deliveryCharge,
+        grandTotal
       })
     );
 
@@ -136,14 +138,13 @@ export function Summary() {
     <div className="summary-container">
       <NevBar BrandTitle="Apna Swad" MenuItems={["Home", "Category"]} />
 
-      {/* Address Section */}
       <div className="address-section">
         <h3>Delivery Location</h3>
 
         <button
           className="change-address-btn"
           onClick={handleGetLocation}
-          disabled={checking || locationChecked}  // 🔥 DISABLE after detected
+          disabled={checking || locationChecked}
         >
           {checking ? "Checking..." : "Click to Auto Detect Location"}
         </button>
@@ -170,7 +171,6 @@ export function Summary() {
         )}
       </div>
 
-      {/* Items Section */}
       <div className="items-section">
         <h3>Order Summary</h3>
 
@@ -187,7 +187,6 @@ export function Summary() {
         ))}
       </div>
 
-      {/* Price Section */}
       <div className="price-section">
         <h3>Price Details</h3>
 
@@ -206,7 +205,6 @@ export function Summary() {
           <strong>₹{grandTotal}</strong>
         </div>
 
-        {/* 🔥 SHOW ONLY AFTER LOCATION DETECTED */}
         {locationChecked && (
           <button className="payment-btn" onClick={handlePayment}>
             Proceed to Payment
