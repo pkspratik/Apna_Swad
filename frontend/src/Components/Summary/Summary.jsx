@@ -1,3 +1,4 @@
+
 // import React, { useState } from "react";
 // import "./Summary.css";
 // import { useCart } from "../../context/CartContext";
@@ -18,10 +19,8 @@
 //   const [userAddress, setUserAddress] = useState("");
 //   const [manualEntry, setManualEntry] = useState(false);
 
-//   // Show proceed button only after location check
 //   const [locationChecked, setLocationChecked] = useState(false);
 
-//   // Restaurant Location
 //   const restaurantLat = 26.033197;
 //   const restaurantLng = 84.835471;
 
@@ -49,7 +48,7 @@
 //     navigator.userAgent.includes("Instagram");
 
 //   // ======================================================
-//   // 📍 FAST, RELIABLE LOCATION DETECTION FOR ALL DEVICES
+//   // 📍 Auto Location Detect
 //   // ======================================================
 //   const handleGetLocation = async () => {
 //     if (!user) {
@@ -59,18 +58,17 @@
 //     }
 
 //     if (isInstagramBrowser()) {
-//       alert("Location is blocked inside Instagram browser. Please open in Chrome.");
+//       alert("Location blocked inside Instagram browser. Open in Chrome.");
 //       return;
 //     }
 
 //     setChecking(true);
 
-//     // Check permission state
 //     try {
 //       if (navigator.permissions) {
 //         const perm = await navigator.permissions.query({ name: "geolocation" });
 //         if (perm.state === "denied") {
-//           alert("Please enable location in Chrome → Site Settings → Location → Allow");
+//           alert("Enable location: Chrome → Site Settings → Location → Allow");
 //           setChecking(false);
 //           return;
 //         }
@@ -89,32 +87,25 @@
 //         setLocationChecked(true);
 //         setUser({ ...user, lat, lng });
 
-//         // Fetch address
 //         try {
 //           const res = await fetch(
 //             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
 //           );
 //           const data = await res.json();
-//           if (data?.display_name) {
-//             setUserAddress(data.display_name);
-//           } else {
-//             setManualEntry(true);
-//           }
+//           if (data?.display_name) setUserAddress(data.display_name);
+//           else setManualEntry(true);
 //         } catch {
 //           setManualEntry(true);
 //         }
 
 //         setChecking(false);
 //       },
-//       async (error) => {
-//         console.log("GPS ERROR:", error);
-
-//         // Fallback to IP location
+//       async () => {
 //         const fallback = await fetch("https://ipapi.co/json/")
 //           .then((r) => r.json())
 //           .catch(() => null);
 
-//         if (fallback && fallback.latitude) {
+//         if (fallback?.latitude) {
 //           const distance = getDistance(
 //             fallback.latitude,
 //             fallback.longitude,
@@ -136,37 +127,38 @@
 //             `${fallback.city}, ${fallback.region}, ${fallback.country_name}`
 //           );
 
-//           alert("GPS unavailable, used approximate location.");
+//           alert("GPS unavailable — using approximate location.");
 //           setChecking(false);
 //           return;
 //         }
 
-//         alert("Location request timed out. Please turn ON GPS.");
+//         alert("Location request timed out. Turn ON GPS.");
 //         setChecking(false);
 //         setManualEntry(true);
 //       },
 //       {
-//         enableHighAccuracy: false, // Faster & reliable on Android
+//         enableHighAccuracy: false,
 //         timeout: 8000,
-//         maximumAge: 20000, // Use cached location if available
+//         maximumAge: 20000,
 //       }
 //     );
 //   };
 
 //   // ======================================================
-//   // 💰 PRICE CALCULATION
+//   // 💰 PRICE CALCULATION — SAFE (NO replace ERROR)
 //   // ======================================================
-//   const totalAmount = cart.reduce(
-//     (sum, item) => sum + Number(item.price.replace("₹", "")) * item.qty,
-//     0
-//   );
+//   const totalAmount = cart.reduce((sum, item) => {
+//     let price = item?.price ?? 0;
+
+//     price = price.toString().replace(/[^\d.]/g, "");
+//     const finalPrice = Number(price);
+
+//     return sum + (isNaN(finalPrice) ? 0 : finalPrice) * (item.qty ?? 0);
+//   }, 0);
 
 //   const deliveryCharge = totalAmount >= 499 ? 0 : 40;
 //   const grandTotal = totalAmount + deliveryCharge;
 
-//   // ======================================================
-//   // ✔ Proceed to Payment
-//   // ======================================================
 //   const handlePayment = () => {
 //     if (!user) {
 //       alert("Please login to continue");
@@ -225,7 +217,7 @@
 //               placeholder="Type your full address here..."
 //               value={userAddress}
 //               onChange={(e) => setUserAddress(e.target.value)}
-//             ></textarea>
+//             />
 //           </div>
 //         )}
 //       </div>
@@ -237,12 +229,17 @@
 //         {cart.map((item, idx) => (
 //           <div className="summary-item" key={idx}>
 //             <img src={item.img} alt={item.name} />
+
 //             <div>
 //               <p className="item-name">{item.name}</p>
 //               <p className="item-option">{item.option}</p>
 //               <p>Qty: {item.qty}</p>
 //             </div>
-//             <p className="item-price">₹{item.price.replace("₹", "")}</p>
+
+//             {/* FIXED PRICE DISPLAY */}
+//             <p className="item-price">
+//               ₹{String(item.price ?? 0).replace(/[^\d.]/g, "")}
+//             </p>
 //           </div>
 //         ))}
 //       </div>
@@ -281,7 +278,6 @@
 
 
 
-
 import React, { useState } from "react";
 import "./Summary.css";
 import { useCart } from "../../context/CartContext";
@@ -301,9 +297,9 @@ export function Summary() {
   const [userDistance, setUserDistance] = useState(null);
   const [userAddress, setUserAddress] = useState("");
   const [manualEntry, setManualEntry] = useState(false);
-
   const [locationChecked, setLocationChecked] = useState(false);
 
+  // Restaurant Coordinates
   const restaurantLat = 26.033197;
   const restaurantLng = 84.835471;
 
@@ -322,17 +318,51 @@ export function Summary() {
     return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
   };
 
-  const formatDistance = (d) => {
-    if (d * 1000 < 1000) return `${(d * 1000).toFixed(0)} meters`;
-    return `${d.toFixed(2)} KM`;
-  };
+  const formatDistance = (d) =>
+    d * 1000 < 1000 ? `${(d * 1000).toFixed(0)} meters` : `${d.toFixed(2)} KM`;
 
   const isInstagramBrowser = () =>
     navigator.userAgent.includes("Instagram");
 
-  // ======================================================
-  // 📍 Auto Location Detect
-  // ======================================================
+  // =======================================================
+  // 🔥 HIGH-ACCURACY GPS (Same as Cart.jsx)
+  // =======================================================
+  const getPreciseLocation = () => {
+    return new Promise((resolve, reject) => {
+      let timeoutReached = false;
+
+      const timer = setTimeout(() => {
+        timeoutReached = true;
+        reject({ message: "GPS timeout" });
+      }, 15000);
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          clearTimeout(timer);
+          if (!timeoutReached) {
+            resolve({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+            });
+          }
+        },
+        (err) => {
+          clearTimeout(timer);
+          reject(err);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        }
+      );
+    });
+  };
+
+  // =======================================================
+  // 📍 LOCATION DETECTION
+  // =======================================================
   const handleGetLocation = async () => {
     if (!user) {
       alert("Please login first");
@@ -341,12 +371,13 @@ export function Summary() {
     }
 
     if (isInstagramBrowser()) {
-      alert("Location blocked inside Instagram browser. Open in Chrome.");
+      alert("Location blocked inside Instagram browser. Please open in Chrome.");
       return;
     }
 
     setChecking(true);
 
+    // Check Permissions
     try {
       if (navigator.permissions) {
         const perm = await navigator.permissions.query({ name: "geolocation" });
@@ -358,84 +389,99 @@ export function Summary() {
       }
     } catch { }
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
+    // 1️⃣ Try precise GPS
+    try {
+      const gps = await getPreciseLocation();
 
-        const distance = getDistance(lat, lng, restaurantLat, restaurantLng);
-        setUserDistance(distance);
+      if (gps.accuracy > 50) {
+        alert(
+          "Weak GPS signal. Move near a window or in open area for better accuracy."
+        );
+      }
 
-        setDeliveryAvailable(true);
-        setLocationChecked(true);
-        setUser({ ...user, lat, lng });
+      const distance = getDistance(
+        gps.lat,
+        gps.lng,
+        restaurantLat,
+        restaurantLng
+      );
 
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
-          );
-          const data = await res.json();
-          if (data?.display_name) setUserAddress(data.display_name);
-          else setManualEntry(true);
-        } catch {
+      setUserDistance(distance);
+      setDeliveryAvailable(true);
+      setLocationChecked(true);
+
+      setUser({ ...user, lat: gps.lat, lng: gps.lng });
+
+      // Reverse Geocoding
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${gps.lat}&lon=${gps.lng}`
+        );
+        const data = await res.json();
+
+        if (data?.display_name) {
+          setUserAddress(data.display_name);
+        } else {
           setManualEntry(true);
         }
-
-        setChecking(false);
-      },
-      async () => {
-        const fallback = await fetch("https://ipapi.co/json/")
-          .then((r) => r.json())
-          .catch(() => null);
-
-        if (fallback?.latitude) {
-          const distance = getDistance(
-            fallback.latitude,
-            fallback.longitude,
-            restaurantLat,
-            restaurantLng
-          );
-
-          setUserDistance(distance);
-          setDeliveryAvailable(true);
-          setLocationChecked(true);
-
-          setUser({
-            ...user,
-            lat: fallback.latitude,
-            lng: fallback.longitude,
-          });
-
-          setUserAddress(
-            `${fallback.city}, ${fallback.region}, ${fallback.country_name}`
-          );
-
-          alert("GPS unavailable — using approximate location.");
-          setChecking(false);
-          return;
-        }
-
-        alert("Location request timed out. Turn ON GPS.");
-        setChecking(false);
+      } catch {
         setManualEntry(true);
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 8000,
-        maximumAge: 20000,
       }
-    );
+
+      setChecking(false);
+      return;
+    } catch (err) {
+      console.log("GPS failed:", err);
+    }
+
+    // 2️⃣ Fallback: IP Approximate Location
+    try {
+      const fallback = await fetch("https://ipapi.co/json/").then((r) =>
+        r.json()
+      );
+
+      if (fallback?.latitude) {
+        const distance = getDistance(
+          fallback.latitude,
+          fallback.longitude,
+          restaurantLat,
+          restaurantLng
+        );
+
+        setUserDistance(distance);
+        setDeliveryAvailable(true);
+        setLocationChecked(true);
+
+        setUser({
+          ...user,
+          lat: fallback.latitude,
+          lng: fallback.longitude,
+        });
+
+        setUserAddress(
+          `${fallback.city}, ${fallback.region}, ${fallback.country_name}`
+        );
+
+        alert(
+          "Precise GPS unavailable — using approximate location based on your network."
+        );
+        setChecking(false);
+        return;
+      }
+    } catch { }
+
+    alert("Unable to detect location. Please enable GPS manually.");
+    setChecking(false);
+    setManualEntry(true);
   };
 
-  // ======================================================
-  // 💰 PRICE CALCULATION — SAFE (NO replace ERROR)
-  // ======================================================
+  // =======================================================
+  // 💰 SAFE PRICE CALCULATION
+  // =======================================================
   const totalAmount = cart.reduce((sum, item) => {
     let price = item?.price ?? 0;
-
     price = price.toString().replace(/[^\d.]/g, "");
     const finalPrice = Number(price);
-
     return sum + (isNaN(finalPrice) ? 0 : finalPrice) * (item.qty ?? 0);
   }, 0);
 
@@ -487,7 +533,7 @@ export function Summary() {
           <p style={{ color: "green", marginTop: 10 }}>
             ✔ Delivery available<br />
             📍 Distance: {formatDistance(userDistance)}<br /><br />
-            📌 <b>Your address:</b><br />
+            <b>Your address:</b><br />
             {userAddress}
           </p>
         )}
@@ -519,7 +565,6 @@ export function Summary() {
               <p>Qty: {item.qty}</p>
             </div>
 
-            {/* FIXED PRICE DISPLAY */}
             <p className="item-price">
               ₹{String(item.price ?? 0).replace(/[^\d.]/g, "")}
             </p>
@@ -557,3 +602,5 @@ export function Summary() {
     </div>
   );
 }
+
+
