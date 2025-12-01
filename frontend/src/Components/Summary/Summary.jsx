@@ -922,9 +922,13 @@ import { useNavigate } from "react-router-dom";
 import { NevBar } from "../Heder_Nev/NevBar.jsx";
 import { Footer } from "../Footer/Footer.jsx";
 
-/*
-  Super-Accurate Summary page (same free strategy as Cart)
-*/
+/**
+ * Optimized Location Strategy - Single Request
+ * - Uses getCurrentPosition ONCE with optimized settings
+ * - No multiple retries or watchPosition to avoid repeated permission prompts
+ * - Falls back to IP-based location if GPS fails
+ * - Works reliably on iOS, Android, and Desktop browsers
+ */
 
 export function Summary() {
   const { cart } = useCart();
@@ -937,12 +941,12 @@ export function Summary() {
   const [userAddress, setUserAddress] = useState("");
   const [manualEntry, setManualEntry] = useState(false);
   const [locationChecked, setLocationChecked] = useState(false);
-  const [hint, setHint] = useState("");
 
   const restaurantLat = 26.033197;
   const restaurantLng = 84.835471;
 
   const toRad = (v) => (v * Math.PI) / 180;
+
   const getDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371;
     const dLat = toRad(lat2 - lat1);
@@ -956,91 +960,35 @@ export function Summary() {
   const formatDistance = (d) =>
     d == null ? "--" : d * 1000 < 1000 ? `${(d * 1000).toFixed(0)} meters` : `${d.toFixed(2)} KM`;
 
-  // collectBestFix from Cart logic (inlined here)
-  const collectBestFix = ({ desiredAccuracy = 30, maxWait = 15000 } = {}) => {
+  /**
+   * Single GPS request - no retries, no watchPosition
+   * This prevents multiple permission prompts
+   */
+  const getGPSLocation = () => {
     return new Promise((resolve, reject) => {
       if (!("geolocation" in navigator)) {
         reject(new Error("Geolocation not supported"));
         return;
       }
 
-      let best = null;
-      let watcher = null;
-      let done = false;
-
-      const finish = (pos) => {
-        if (done) return;
-        done = true;
-        if (watcher) navigator.geolocation.clearWatch(watcher);
-        resolve(pos);
-      };
-
-      const abort = (err) => {
-        if (done) return;
-        done = true;
-        if (watcher) navigator.geolocation.clearWatch(watcher);
-        reject(err);
-      };
-
-      const timer = setTimeout(() => {
-        if (best) finish(best);
-        else abort(new Error("timeout"));
-      }, maxWait);
-
-      try {
-        watcher = navigator.geolocation.watchPosition(
-          (pos) => {
-            const acc = pos.coords?.accuracy ?? Infinity;
-            if (!best || acc < (best.coords?.accuracy ?? Infinity)) best = pos;
-            if (acc <= desiredAccuracy) {
-              clearTimeout(timer);
-              finish(pos);
-            } else {
-              setHint(`Improving GPS accuracy… (${Math.round(acc)} m). Move near a window if indoors.`);
-            }
-          },
-          (err) => {
-            clearTimeout(timer);
-            abort(err);
-          },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-        );
-      } catch (e) {
-        clearTimeout(timer);
-        abort(e);
-      }
-    });
-  };
-
-  const getSuperAccurateLocation = async ({
-    desiredAccuracy = 30,
-    maxRetries = 5,
-    waitPerAttempt = 1500,
-    maxWaitPerAttempt = 15000,
-  } = {}) => {
-    let attempt = 0;
-    let lastErr = null;
-    while (attempt < maxRetries) {
-      attempt += 1;
-      setHint(`Attempting precise GPS (${attempt}/${maxRetries})`);
-      try {
-        const pos = await collectBestFix({ desiredAccuracy, maxWait: maxWaitPerAttempt });
-        const acc = pos.coords && typeof pos.coords.accuracy === "number" ? pos.coords.accuracy : Infinity;
-        if (acc <= desiredAccuracy) {
-          setHint("");
-          return pos;
-        } else {
-          lastErr = new Error(`accuracy ${acc} > ${desiredAccuracy}`);
-          if (attempt < maxRetries) await new Promise((r) => setTimeout(r, waitPerAttempt));
-          else return pos;
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
+        },
+        (error) => {
+          reject(error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
         }
-      } catch (e) {
-        lastErr = e;
-        if (attempt < maxRetries) await new Promise((r) => setTimeout(r, waitPerAttempt));
-        else throw lastErr;
-      }
-    }
-    throw lastErr || new Error("Could not get precise location");
+      );
+    });
   };
 
   const handleGetLocation = async () => {
@@ -1051,83 +999,90 @@ export function Summary() {
     }
 
     setChecking(true);
-    setHint("");
 
-    // quick permission check
+    // Check permission status first
     try {
       if (navigator.permissions) {
-        const p = await navigator.permissions.query({ name: "geolocation" });
-        if (p.state === "denied") {
-          alert("Enable location: Chrome → Site Settings → Location → Allow");
+        const permission = await navigator.permissions.query({ name: "geolocation" });
+        if (permission.state === "denied") {
+          alert("Location access is blocked. Please enable it in your browser settings:\n\nChrome: Settings → Privacy → Location → Allow");
           setChecking(false);
           return;
         }
       }
-    } catch { }
+    } catch (e) {
+      // Permission API not supported, continue anyway
+    }
 
     let lat = null;
     let lng = null;
-    let pos = null;
+    let gpsSuccess = false;
 
+    // Try GPS location (single request)
     try {
-      pos = await getSuperAccurateLocation({
-        desiredAccuracy: 30,
-        maxRetries: 5,
-        waitPerAttempt: 1500,
-        maxWaitPerAttempt: 15000,
-      });
+      const gpsData = await getGPSLocation();
+      lat = gpsData.lat;
+      lng = gpsData.lng;
+      gpsSuccess = true;
 
-      if (pos?.coords) {
-        lat = pos.coords.latitude;
-        lng = pos.coords.longitude;
-      }
-    } catch (e) {
-      console.log("GPS super-accurate failed:", e);
+      // Log accuracy for debugging
+      console.log(`GPS accuracy: ${Math.round(gpsData.accuracy)} meters`);
+    } catch (gpsError) {
+      console.log("GPS failed:", gpsError.message);
     }
 
+    // Fallback to IP-based location if GPS failed
     if (!lat || !lng) {
-      setHint("Using approximate network location (fallback).");
       try {
-        const fallback = await fetch("https://ipapi.co/json/").then((r) => r.json());
-        if (fallback?.latitude && fallback?.longitude) {
-          lat = fallback.latitude;
-          lng = fallback.longitude;
-          setUserAddress(`${fallback.city}, ${fallback.region}, ${fallback.country_name}`);
+        const response = await fetch("https://ipapi.co/json/");
+        const ipData = await response.json();
+
+        if (ipData?.latitude && ipData?.longitude) {
+          lat = ipData.latitude;
+          lng = ipData.longitude;
+          setUserAddress(`${ipData.city}, ${ipData.region}, ${ipData.country_name}`);
+          console.log("Using IP-based location (approximate)");
         }
-      } catch (e) {
-        console.log("ip fallback failed", e);
+      } catch (ipError) {
+        console.log("IP location failed:", ipError);
       }
     }
 
+    // If both methods failed
     if (!lat || !lng) {
-      alert("Unable to detect location. Please enable GPS and try again.");
+      alert("Unable to detect your location. Please:\n1. Enable GPS/Location services\n2. Allow location access in browser\n3. Try again");
       setChecking(false);
       setManualEntry(true);
-      setHint("");
       return;
     }
 
+    // Calculate distance
     const distance = getDistance(lat, lng, restaurantLat, restaurantLng);
     setUserDistance(distance);
     setDeliveryAvailable(true);
     setLocationChecked(true);
 
-    setUser && setUser({ ...user, lat, lng });
+    // Save coordinates to user context
+    if (setUser) {
+      setUser({ ...user, lat, lng });
+    }
 
-    // reverse geocode only if we had a GPS fix (pos)
-    if (pos?.coords) {
+    // Reverse geocode only if we got GPS location
+    if (gpsSuccess) {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
         const data = await res.json();
-        if (data?.display_name) setUserAddress(data.display_name);
-        else setManualEntry(true);
+        if (data?.display_name) {
+          setUserAddress(data.display_name);
+        } else {
+          setManualEntry(true);
+        }
       } catch {
         setManualEntry(true);
       }
     }
 
     setChecking(false);
-    setHint("");
   };
 
   const totalAmount = cart.reduce((sum, item) => {
@@ -1172,8 +1127,6 @@ export function Summary() {
         <button className="change-address-btn" onClick={handleGetLocation} disabled={checking || locationChecked}>
           {checking ? "Checking..." : "Click to Auto Detect Location"}
         </button>
-
-        {hint && <p style={{ color: "#b04", marginTop: 8 }}>{hint}</p>}
 
         {deliveryAvailable && (
           <p style={{ color: "green", marginTop: 10 }}>
