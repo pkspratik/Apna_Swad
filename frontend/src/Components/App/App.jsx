@@ -13,6 +13,7 @@ import { SelectedItemsCategory } from "../ProductDetails/SelectedItemsCategory/S
 import { Breakfast } from "../BreakFast/Breakfast";
 import { Lunch } from "../Lunch/Lunch";
 import { Snacks } from "../Snacks/Snacks";
+import { Sweets } from "../Sweets/Sweets";
 import { FoodWithCart } from "../Lunch/FoodWithCart/FoodWithCart";
 import { Cart } from "../Cart/Cart";
 
@@ -145,6 +146,7 @@ export default function App() {
         <Route path="/category/Breakfast" element={<Breakfast />} />
         <Route path="/category/Lunch" element={<Lunch />} />
         <Route path="/category/Snacks" element={<Snacks />} />
+        <Route path="/category/Sweets" element={<Sweets />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/contactUs" element={<ContactUs />} />
         <Route path="/signup" element={<Signup />} />
