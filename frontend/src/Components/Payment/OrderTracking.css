@@ -1,4 +1,4 @@
-.tracking-container {
+/* .tracking-container {
   max-width: 650px;
   margin: auto;
   margin-top: 25px;
@@ -137,4 +137,170 @@
 }
 .reorder-btn:hover {
   background: #e65500;
+} */
+
+
+
+
+/* ---------------- MAIN CONTAINER ---------------- */
+
+.tracking-container {
+  max-width: 750px;
+  margin: 30px auto;
+  background: #ffffff;
+  padding: 25px 30px;
+  border-radius: 20px;
+  box-shadow: 0px 10px 35px rgba(0, 0, 0, 0.12);
+  animation: fadeIn 0.4s ease-in-out;
+  font-family: "Poppins", sans-serif;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------------- HEADING ---------------- */
+
+.tracking-title {
+  font-weight: 600;
+  font-size: 26px;
+  text-align: center;
+  color: #222;
+  margin-bottom: 15px;
+}
+
+/* ---------------- ORDER INFO TEXT ---------------- */
+
+.tracking-container p {
+  font-size: 15px;
+  color: #444;
+  margin: 5px 0;
+}
+
+.tracking-address {
+  margin-top: 10px;
+  font-size: 15px;
+  color: #333;
+}
+
+/* ---------------- ETA ---------------- */
+
+.eta-time {
+  text-align: center;
+  background: #f0f9ff;
+  width: fit-content;
+  padding: 8px 18px;
+  margin: 15px auto;
+  border-radius: 30px;
+  color: #007bff;
+  font-weight: 600;
+  border: 1px solid #d7ecff;
+}
+
+/* ---------------- STEPS CONTAINER ---------------- */
+
+.steps-wrapper {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 35px;
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.steps-wrapper::before {
+  content: "";
+  position: absolute;
+  top: 22px;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: #e5e5e5;
+  z-index: 1;
+  border-radius: 4px;
+}
+
+.step {
+  text-align: center;
+  z-index: 2;
+  flex: 1;
+}
+
+.step-circle {
+  width: 45px;
+  height: 45px;
+  background: #d9d9d9;
+  color: #555;
+  font-weight: 600;
+  font-size: 18px;
+  border-radius: 50%;
+  line-height: 45px;
+  margin: auto;
+  transition: 0.3s;
+}
+
+.step-active .step-circle {
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  color: #fff;
+  transform: scale(1.05);
+  box-shadow: 0px 4px 12px rgba(0, 118, 255, 0.3);
+}
+
+.step-label {
+  font-size: 13px;
+  margin-top: 6px;
+  color: #333;
+}
+
+/* ---------------- BUTTONS ---------------- */
+
+.reorder-btn {
+  width: 100%;
+  padding: 14px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  transition: 0.3s ease;
+  background: linear-gradient(135deg, #007bff, #0056d6);
+}
+
+.reorder-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0px 6px 18px rgba(0, 115, 255, 0.4);
+}
+
+
+/* ---------------- RESPONSIVE ---------------- */
+
+@media (max-width: 600px) {
+
+  .tracking-container {
+    padding: 20px;
+  }
+
+  .tracking-title {
+    font-size: 22px;
+  }
+
+  .step-circle {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+    line-height: 38px;
+  }
+
+  .step-label {
+    font-size: 11px;
+  }
 }
