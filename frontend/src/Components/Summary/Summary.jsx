@@ -942,8 +942,9 @@ export function Summary() {
   const [manualEntry, setManualEntry] = useState(false);
   const [locationChecked, setLocationChecked] = useState(false);
 
-  const restaurantLat = 26.033197;
-  const restaurantLng = 84.835471;
+  // Restaurant coordinates (MUST match Cart.jsx exactly)
+  const restaurantLat = 26.033207;
+  const restaurantLng = 84.835460;
 
   const toRad = (v) => (v * Math.PI) / 180;
 
@@ -961,8 +962,11 @@ export function Summary() {
     d == null ? "--" : d * 1000 < 1000 ? `${(d * 1000).toFixed(0)} meters` : `${d.toFixed(2)} KM`;
 
   /**
-   * Single GPS request - no retries, no watchPosition
-   * This prevents multiple permission prompts
+   * Improved GPS location with multiple readings
+   * - Uses watchPosition to collect multiple GPS fixes over 10 seconds
+   * - Keeps the most accurate reading (lowest accuracy value)
+   * - Rejects readings with >50m accuracy for better precision
+   * - Provides user feedback about GPS quality
    */
   const getGPSLocation = () => {
     return new Promise((resolve, reject) => {
@@ -971,21 +975,74 @@ export function Summary() {
         return;
       }
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy
+      let bestReading = null;
+      let watchId = null;
+      let readingCount = 0;
+
+      // Collect readings for 10 seconds, then return the best one
+      const collectionTimeout = setTimeout(() => {
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId);
+        }
+
+        if (bestReading) {
+          console.log(`✅ Best GPS reading after ${readingCount} attempts:`, {
+            lat: bestReading.lat.toFixed(6),
+            lng: bestReading.lng.toFixed(6),
+            accuracy: `${Math.round(bestReading.accuracy)}m`
           });
+          resolve(bestReading);
+        } else {
+          reject(new Error("No accurate GPS reading obtained"));
+        }
+      }, 10000); // Collect for 10 seconds
+
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          readingCount++;
+          const accuracy = position.coords.accuracy;
+
+          console.log(`📍 GPS Reading #${readingCount}:`, {
+            lat: position.coords.latitude.toFixed(6),
+            lng: position.coords.longitude.toFixed(6),
+            accuracy: `${Math.round(accuracy)}m`,
+            timestamp: new Date(position.timestamp).toLocaleTimeString()
+          });
+
+          // Only accept readings with good accuracy (<50m)
+          if (accuracy <= 50) {
+            // Keep this reading if it's better than what we have
+            if (!bestReading || accuracy < bestReading.accuracy) {
+              bestReading = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+                accuracy: accuracy
+              };
+
+              // If we get a very accurate reading (<20m), use it immediately
+              if (accuracy < 20) {
+                clearTimeout(collectionTimeout);
+                navigator.geolocation.clearWatch(watchId);
+                console.log(`🎯 Excellent GPS accuracy (${Math.round(accuracy)}m) - using immediately`);
+                resolve(bestReading);
+              }
+            }
+          } else {
+            console.warn(`⚠️ GPS accuracy too low: ${Math.round(accuracy)}m - waiting for better fix...`);
+          }
         },
         (error) => {
+          clearTimeout(collectionTimeout);
+          if (watchId !== null) {
+            navigator.geolocation.clearWatch(watchId);
+          }
+          console.error("❌ GPS Error:", error.code, error.message);
           reject(error);
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
+          timeout: 8000,   // Timeout for each individual reading
+          maximumAge: 0    // Always get fresh location, no cache
         }
       );
     });
@@ -1018,7 +1075,7 @@ export function Summary() {
     let lng = null;
     let gpsSuccess = false;
 
-    // Try GPS location (single request)
+    // Try GPS location (multiple readings for best accuracy)
     try {
       const gpsData = await getGPSLocation();
       lat = gpsData.lat;
@@ -1026,9 +1083,15 @@ export function Summary() {
       gpsSuccess = true;
 
       // Log accuracy for debugging
-      console.log(`GPS accuracy: ${Math.round(gpsData.accuracy)} meters`);
+      console.log(`✅ Using GPS location with ${Math.round(gpsData.accuracy)}m accuracy`);
+
+      // Provide user feedback about GPS quality
+      if (gpsData.accuracy > 30) {
+        console.warn(`⚠️ GPS accuracy is ${Math.round(gpsData.accuracy)}m. For better accuracy, move near a window or outdoors.`);
+      }
     } catch (gpsError) {
-      console.log("GPS failed:", gpsError.message);
+      console.log("❌ GPS failed:", gpsError.message);
+      console.log("🔄 Falling back to IP-based location...");
     }
 
     // Fallback to IP-based location if GPS failed
@@ -1056,8 +1119,16 @@ export function Summary() {
       return;
     }
 
-    // Calculate distance
+    // Calculate distance with detailed logging
+    console.log("📊 Distance Calculation:");
+    console.log("  Restaurant:", { lat: restaurantLat, lng: restaurantLng });
+    console.log("  Your Location:", { lat: lat.toFixed(6), lng: lng.toFixed(6) });
+
     const distance = getDistance(lat, lng, restaurantLat, restaurantLng);
+
+    console.log("  Calculated Distance:", `${distance.toFixed(2)} KM`);
+    console.log("  Location Source:", gpsSuccess ? "gps" : "ip");
+
     setUserDistance(distance);
     setDeliveryAvailable(true);
     setLocationChecked(true);
