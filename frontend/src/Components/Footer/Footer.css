@@ -2,7 +2,8 @@
 .footer-title {
   font-size: 15px;
   font-weight: 700;
-  color: #504f4f;   /* light gray */
+  color: #504f4f;
+  /* light gray */
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -10,14 +11,15 @@
 /* Footer Button (text color changed) */
 .footer-button {
   background-color: #00B386 !important;
-  color: #1a1a1a !important;   /* <-- Change button text color here */
+  color: #1a1a1a !important;
+  /* <-- Change button text color here */
   font-weight: 600;
   box-shadow: 0 3px 10px rgba(0, 179, 134, 0.5);
 }
 
 /* Footer Links */
 .footer-link {
-  color: #bbbbbb !important; 
+  color: #bbbbbb !important;
   text-decoration: none;
   display: block;
   margin-bottom: 6px;
@@ -29,3 +31,20 @@
   transform: translateX(5px);
 }
 
+body[data-footer-theme="dark"] {
+  background: #111;
+  color: white;
+}
+
+body[data-footer-theme="light"] {
+  background: white;
+  color: black;
+}
+
+.footer-link {
+  color: #ddd;
+}
+
+body[data-footer-theme="dark"] .footer-link {
+  color: #fff;
+}
