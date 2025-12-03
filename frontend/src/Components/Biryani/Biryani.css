@@ -1,0 +1,95 @@
+.biryani-container {
+  padding: 20px;
+  text-align: center;
+}
+
+/* Filter Buttons */
+.filter-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.filter-buttons button {
+  padding: 7px 18px;
+  border-radius: 20px;
+  cursor: pointer;
+  border: 1px solid #666;
+  background: #f4f4f4;
+  transition: 0.3s ease;
+}
+
+.filter-buttons button.active {
+  background: #000;
+  color: white;
+  border-color: #000;
+}
+
+/* Veg / Nonveg color coding */
+.veg {
+  border-color: green;
+}
+
+.nonveg {
+  border-color: red;
+}
+
+/* === GRID (Same size as other UI) === */
+.biryani-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  padding: 15px 10px;
+}
+
+/* === CARD === */
+.biryani-card {
+  text-align: center;
+  padding: 15px;
+  border-radius: 15px;
+  background: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  transition: transform 0.2s;
+}
+
+.biryani-card:hover {
+  transform: translateY(-4px);
+}
+
+.biryani-card img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.biryani-card .title {
+  font-size: 17px;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.biryani-card .price {
+  font-size: 15px;
+  font-weight: 500;
+  margin: 6px 0;
+}
+
+/* Add Cart Button */
+.add-btn {
+  padding: 9px 14px;
+  background: #ff6b00;
+  border: none;
+  margin-top: 5px;
+  width: 100%;
+  font-size: 15px;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0px 4px 10px rgba(255, 102, 0, 0.5);
+}
+
+.add-btn:hover {
+  background: #e55d00;
+}

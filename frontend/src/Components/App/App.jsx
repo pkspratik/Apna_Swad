@@ -16,7 +16,9 @@ import { Snacks } from "../Snacks/Snacks";
 import { Sweets } from "../Sweets/Sweets";
 import { FoodWithCart } from "../Lunch/FoodWithCart/FoodWithCart";
 import { Cart } from "../Cart/Cart";
-
+import { Biryani } from "../Biryani/Biryani";
+import { HotDrink } from "../HotDrink/HotDrink";
+import { ColdDrink } from "../ColdDrink/ColdDrink";
 // PROVIDERS
 import { CartProvider } from "../../context/CartContext";
 
@@ -153,6 +155,11 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route path="/summary" element={<Summary />} />
+
+        <Route path="/biryani" element={<Biryani />} />
+        <Route path="/hot-drink" element={<HotDrink />} />
+        <Route path="/cold-drink" element={<ColdDrink />} />
+
         <Route path="/payment" element={<Payment />} />
         <Route path="/upi-payment" element={<UPIPayment />} />
         <Route path="/order-success" element={<OrderSuccess />} />
